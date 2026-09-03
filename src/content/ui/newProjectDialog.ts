@@ -9,6 +9,8 @@ export function openNewProjectDialog(opts: {
   preselected: readonly string[];
   prefix: string;
   existingTopics: ReadonlySet<string>;
+  /** Repositories with several folder topics: excluded here, they must be resolved with Fix first. */
+  conflicted: ReadonlySet<string>;
   showPrivacyNotice: boolean;
   onCreate(topic: string, displayName: string, repoNames: string[], dismissNotice: boolean): Promise<void>;
 }): void {
@@ -33,7 +35,7 @@ export function openNewProjectDialog(opts: {
   const createBtn = h("button", { className: "gtf-btn gtf-btn-primary", type: "button" }, "Create project");
   const error = h("p", { className: "gtf-error", hidden: true });
 
-  const sorted = [...opts.repos].sort(byName);
+  const sorted = [...opts.repos].filter((r) => !opts.conflicted.has(r.name)).sort(byName);
   const renderList = () => {
     clear(list);
     const q = filter.value.trim().toLowerCase();

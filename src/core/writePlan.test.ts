@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { planTopicWrite } from "./writePlan.ts";
+import { expectationMatches, planTopicWrite } from "./writePlan.ts";
 
 const P = "topic-folders-";
 
@@ -27,4 +27,12 @@ test("no-op when already in place; errors for invalid/foreign topics and the 20-
   const twenty = Array.from({ length: 20 }, (_, i) => `t${i}`);
   assert.equal(planTopicWrite(twenty, `${P}a`, P).kind, "error");
   assert.equal(planTopicWrite([...twenty.slice(0, 19), `${P}old`], `${P}new`, P).kind, "write", "replacing keeps the count at 20");
+});
+
+test("expectationMatches: null skips, otherwise set equality of folder topics", () => {
+  assert.equal(expectationMatches(["topic-folders-a"], null), true);
+  assert.equal(expectationMatches(["topic-folders-a"], ["topic-folders-a"]), true);
+  assert.equal(expectationMatches([], []), true);
+  assert.equal(expectationMatches(["topic-folders-b"], ["topic-folders-a"]), false, "moved elsewhere since the list was loaded");
+  assert.equal(expectationMatches(["topic-folders-a", "topic-folders-b"], ["topic-folders-a"]), false, "a new conflict appeared");
 });

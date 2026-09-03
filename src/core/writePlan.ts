@@ -2,6 +2,12 @@
 import { isProjectTopic, isValidTopic, TOPICS_PER_REPO_MAX } from "./topic.ts";
 import { sameTopicSet, withProjectTopic } from "./topicsMerge.ts";
 
+/** True when the folder topics currently on GitHub are exactly what the user saw when confirming the action. */
+export function expectationMatches(currentFolderTopics: readonly string[], expect: readonly string[] | null): boolean {
+  if (expect === null) return true;
+  return sameTopicSet(currentFolderTopics, expect);
+}
+
 export type WritePlan =
   | { kind: "unchanged"; topics: string[] }
   | { kind: "write"; before: string[]; after: string[] }

@@ -2,6 +2,7 @@
 // Rules: read as little as possible from GitHub's DOM (owner from URL + one anchor element),
 // never use innerHTML with GitHub-derived strings, never touch chrome.storage or the token (service worker only).
 import { h } from "./ui/h.ts";
+import { closeAllDialogs } from "./ui/dialog.ts";
 import { send } from "./messaging.ts";
 import { groupRepos, type Grouped } from "../core/grouping.ts";
 import { filterGrouped } from "../core/search.ts";
@@ -48,6 +49,7 @@ class GroupedView {
   private readonly flash: HTMLElement;
   private flashTimer: number | undefined;
   private busy = false;
+  private loadSeq = 0;
   private prefs: Prefs = DEFAULT_PREFS;
   private phase: Phase = { kind: "loading" };
   private query = "";
@@ -91,17 +93,21 @@ class GroupedView {
     await this.load(false);
   }
 
-  /** Restore GitHub's own list. Called when the root is removed (navigation away). */
+  /** Restore GitHub's own list and drop anything this view still owns. Called on navigation away / remount. */
   dispose(): void {
     this.disposed = true;
+    this.loadSeq++;
     this.anchor.hidden = false;
+    closeAllDialogs();
+    this.root.remove();
   }
 
   private async load(force: boolean): Promise<void> {
+    const seq = ++this.loadSeq; // a newer load (Refresh, remount) makes this one's result obsolete
     this.phase = { kind: "loading" };
     this.render();
     const auth = await send<AuthStatus>({ type: "auth.status" });
-    if (this.disposed) return;
+    if (this.disposed || seq !== this.loadSeq) return;
     if (!auth.ok) {
       this.phase = { kind: "error", error: auth.error };
       return this.render();
@@ -111,7 +117,7 @@ class GroupedView {
       return this.render();
     }
     const list = await send<ReposList>({ type: "repos.list", owner: this.ctx.owner, force });
-    if (this.disposed) return;
+    if (this.disposed || seq !== this.loadSeq) return;
     this.phase = list.ok ? { kind: "ready", data: list.data, grouped: groupRepos(list.data.repos, this.prefs.prefix) } : { kind: "error", error: list.error };
     this.render();
   }
@@ -121,14 +127,15 @@ class GroupedView {
     if (this.phase.kind !== "ready" || this.busy) return;
     const repo = this.phase.data.repos.find((r) => r.name === repoName);
     if (!repo) return;
-    const current = projectTopics(repo.topics, this.prefs.prefix)[0] ?? null;
+    const folderTopics = projectTopics(repo.topics, this.prefs.prefix);
+    const current = folderTopics[0] ?? null;
     openMoveDialog({
       repoName,
       currentTopic: current,
       projects: this.phase.grouped.projects.map((p) => ({ topic: p.topic, name: p.name, count: p.repos.length })),
       onSelect: (project) => {
         const target = project === null ? "Ungrouped" : (this.phase.kind === "ready" && this.phase.grouped.projects.find((p) => p.topic === project)?.name) || project;
-        void this.applyWrites([{ owner: this.ctx.owner, repo: repoName, project }], `Moved ${repoName} to ${target}.`);
+        void this.applyWrites([{ owner: this.ctx.owner, repo: repoName, project, expect: folderTopics }], `Moved ${repoName} to ${target}.`);
       },
       onNewProject: () => this.openNewProject([repoName]),
     });
@@ -137,18 +144,21 @@ class GroupedView {
   private openNewProject(preselected: string[]): void {
     if (this.phase.kind !== "ready" || this.busy) return;
     const existing = new Set(this.phase.grouped.projects.map((p) => p.topic));
+    const repos = this.phase.data.repos;
     openNewProjectDialog({
-      repos: this.phase.data.repos,
+      repos,
       preselected,
       prefix: this.prefs.prefix,
       existingTopics: existing,
+      conflicted: new Set(this.phase.grouped.conflicts.map((c) => c.repo.name)),
       showPrivacyNotice: !this.prefs.privacyNoticeDismissed,
       onCreate: async (topic, displayName, repoNames, dismiss) => {
         if (dismiss) {
           this.prefs = { ...this.prefs, privacyNoticeDismissed: true };
           void send({ type: "prefs.set", patch: { privacyNoticeDismissed: true } });
         }
-        const items = repoNames.map((repo) => ({ owner: this.ctx.owner, repo, project: topic }));
+        const expectOf = (name: string) => projectTopics(repos.find((r) => r.name === name)?.topics ?? [], this.prefs.prefix);
+        const items = repoNames.map((repo) => ({ owner: this.ctx.owner, repo, project: topic, expect: expectOf(repo) }));
         await this.applyWrites(items, `${existing.has(topic) ? "Moved" : "Created"} ${displayName}: ${repoNames.length} repositor${repoNames.length === 1 ? "y" : "ies"}.`, true);
       },
     });
@@ -163,7 +173,7 @@ class GroupedView {
       repoName,
       topics: conflict.topics,
       prefix: this.prefs.prefix,
-      onFix: (keep) => this.applyWrites([{ owner: this.ctx.owner, repo: repoName, project: keep }], `Fixed ${repoName}: kept ${displayNameFromTopic(keep, this.prefs.prefix)}.`, true),
+      onFix: (keep) => this.applyWrites([{ owner: this.ctx.owner, repo: repoName, project: keep, expect: [...conflict.topics] }], `Fixed ${repoName}: kept ${displayNameFromTopic(keep, this.prefs.prefix)}.`, true),
     });
   }
 
@@ -185,7 +195,7 @@ class GroupedView {
           existingTopics: existing,
           onRename: (newTopic, newName) =>
             this.applyWrites(
-              repos.map((repo) => ({ owner: this.ctx.owner, repo, project: newTopic })),
+              repos.map((repo) => ({ owner: this.ctx.owner, repo, project: newTopic, expect: [topic] })),
               `Renamed ${project.name} to ${newName} (${repos.length} repositor${repos.length === 1 ? "y" : "ies"}).`,
               true,
             ),
@@ -196,7 +206,7 @@ class GroupedView {
           count: repos.length,
           onDelete: () =>
             this.applyWrites(
-              repos.map((repo) => ({ owner: this.ctx.owner, repo, project: null })),
+              repos.map((repo) => ({ owner: this.ctx.owner, repo, project: null, expect: [topic] })),
               `Deleted project ${project.name}: ${repos.length} repositor${repos.length === 1 ? "y" : "ies"} moved to Ungrouped.`,
               true,
             ),
@@ -214,7 +224,7 @@ class GroupedView {
       let changedCount = 0;
       if (items.length === 1) {
         const item = items[0]!;
-        const res = await send<SetProjectResult>({ type: "repos.setProject", owner: item.owner, repo: item.repo, project: item.project });
+        const res = await send<SetProjectResult>({ type: "repos.setProject", owner: item.owner, repo: item.repo, project: item.project, expect: item.expect });
         if (res.ok) changedCount = res.data.changed ? 1 : 0;
         else failed = [{ repo: item.repo, error: res.error }];
         if (res.ok && res.data.dryRun) successMessage += " (dry run — nothing written)";
@@ -301,31 +311,32 @@ class GroupedView {
   }
 }
 
-const views = new WeakMap<Element, GroupedView>();
+// Exactly one live view per page. Tracked here (not via DOM lookup) so a view whose root Turbo already removed
+// is still disposed: its pending loads/writes are ignored and its dialogs closed.
+let activeView: GroupedView | null = null;
 
 function mount(): void {
   const ctx = detectRepositoriesPage(location.href);
-  const existing = document.getElementById(ROOT_ID);
   const anchor = document.getElementById(ANCHOR_ID);
-
-  const teardown = () => {
-    if (!existing) return;
-    views.get(existing)?.dispose();
-    existing.remove();
-  };
 
   if (!ctx || !anchor) {
     // Not a repositories page, or GitHub's DOM changed: leave the original UI untouched.
-    teardown();
+    activeView?.dispose();
+    activeView = null;
     return;
   }
+  ensureObserver();
   const alreadyMounted =
-    existing !== null && existing.isConnected && existing.dataset["gtfUrl"] === location.href && anchor.previousElementSibling === existing;
+    activeView !== null &&
+    activeView.root.isConnected &&
+    activeView.root.dataset["gtfUrl"] === location.href &&
+    anchor.previousElementSibling === activeView.root;
   if (alreadyMounted) return;
 
-  teardown();
+  activeView?.dispose();
+  for (const stray of document.querySelectorAll(`#${ROOT_ID}`)) stray.remove();
   const view = new GroupedView(ctx, anchor);
-  views.set(view.root, view);
+  activeView = view;
   anchor.before(view.root);
   void view.init();
 }
@@ -345,6 +356,19 @@ for (const eventName of ["turbo:load", "turbo:frame-load", "turbo:render"]) {
   document.addEventListener(eventName, scheduleMount);
 }
 window.addEventListener("popstate", scheduleMount);
-new MutationObserver(scheduleMount).observe(document.body, { childList: true, subtree: true });
+
+// Observe the profile's Turbo frame (where tab switches re-render) rather than the whole document; fall back to
+// top-level body children only, so unrelated GitHub pages don't pay for a subtree observer.
+const observer = new MutationObserver(scheduleMount);
+let observed: Element | null = null;
+function ensureObserver(): void {
+  const frame = document.querySelector("turbo-frame#user-profile-frame");
+  const target = frame ?? document.body;
+  if (target === observed) return;
+  observer.disconnect();
+  observer.observe(target, { childList: true, subtree: target === frame });
+  observed = target;
+}
+ensureObserver();
 
 mount();

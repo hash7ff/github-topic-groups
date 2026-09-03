@@ -130,7 +130,7 @@ setProject(owner, repo, project | null):
 | M6 ✅ 2026-09-03（Case 2 / Case 3 を UI から確認、初回警告、一括作成、復元） | Move to…（既存 Project / Ungrouped / New project…）、New Project ダイアログ（表示名 → Topic 名プレビュー・バリデーション・初回の公開性警告・リポ 1 件以上選択）、成功後に再取得して再描画 | §33 **Case 2**、**Case 3** | 手動 + `gh api` |
 | M7 ✅ 2026-09-03（Case 4 / Case 5、確認文、失敗分 Retry ボタン） | Project Rename / Delete（確認ダイアログに件数、逐次実行、進捗、成功/失敗一覧、失敗分 Retry） | §33 **Case 4**、**Case 5**。途中失敗時に UI が嘘をつかない（成功分だけ反映） | 手動（失敗はネットワーク切断で再現） |
 | M8 ✅ 2026-09-03（競合を意図的に作って Fix、無関係 Topic 保持） | Conflict の Fix（複数 `project-*` から 1 つ選ぶ）、エラー分類（401 → 設定へ誘導 / 403 → `x-accepted-github-permissions` の内容を表示 / 404 / 422 → GitHub のメッセージ / rate limit → 待機案内 / offline） | 各エラーを故意に再現して文言確認（読み取り専用トークンで書き込み → 403 表示） | 手動 |
-| M9 ✅ 2026-09-03（README 最終化、manifest 0.1.0、`v0.1.0` タグ。アイコンは仮のまま） | 仕上げ：アイコン、README（Load unpacked 手順・PAT の作り方と権限・Topic 公開性の注意・拡張が絶対にやらないこと・制限事項）、§33 全 Case の受け入れ記録 | §33 Case 1〜6 を日付付きで記録。`git tag v0.1.0` | チェックリスト |
+| M9 ✅ 2026-09-03（README 最終化、manifest 0.1.0、`v0.1.0` タグ。アイコンは仮のまま）→ Codex レビュー対応で **v0.1.1**（§5.5） | 仕上げ：アイコン、README（Load unpacked 手順・PAT の作り方と権限・Topic 公開性の注意・拡張が絶対にやらないこと・制限事項）、§33 全 Case の受け入れ記録 | §33 Case 1〜6 を日付付きで記録。`git tag v0.1.0` | チェックリスト |
 
 Phase 2（v0.1 を実際に使ってから判断）: Drag & Drop（Move メニューは残す）、複数選択の一括 Move、Public/Private・言語フィルタ、linguist 色表、
 ローカル別名（§6 参照）、Organization ページ対応（DOM を先に現物確認。fine-grained PAT は Org 側の許可ポリシーが必要）。Phase 3: Global Dashboard。
@@ -175,6 +175,27 @@ build-in-public の観点では、リポを最初から公開（MIT）にする�
 | 5 | Project 削除でリポは残り Topic だけ外れて Ungrouped へ | ✅ | 同上。`GET /repos/.../gtf-test-firmware` が 200 |
 | 6 | API 失敗時に GitHub 標準表示へ戻せ、標準表示を壊さない | ✅ | `verify-m4-grouped-view.cjs`（無効トークンで 401 → Retry / Show original） |
 | 追加 | 複数フォルダ Topic の競合検出と Fix（§25） | ✅ | `verify-m8-conflict.cjs` |
+
+## 5.5 Codex レビュー対応（2026-09-03、`codex exec -m gpt-5.6-sol -c model_reasoning_effort=max`、全文は docs/reviews/2026-09-03-codex-gpt-5.6-sol.md）
+
+12 件の指摘を精査し、妥当なものだけ採用した（v0.1.1）。
+
+| 指摘 | 判断 | 対応 |
+|---|---|---|
+| GET→PUT 間の外部編集で Topic が消えうる | 妥当だが API 上解決不能（If-Match 非対応） | 直前 GET と期待状態の照合で窓を最小化し、README とプライバシーポリシーに限界として明記 |
+| storage.local は既定で Content Script から読める | 妥当 | SW 起動時に `chrome.storage.local.setAccessLevel(TRUSTED_CONTEXTS)`。Content Script 世界から DENIED を実機確認 |
+| メッセージ送信元を区別していない | 妥当 | 送信元を options / content に分類。認証・ジャーナルは options 限定、接頭辞・dry-run 変更も options 限定、書き込みは owner === login を必須化、形の検証と一括上限 500 |
+| 書き込みが確認時の状態に束縛されていない | 妥当 | 各項目に `expect`（UI が見ていたフォルダ Topic）を持たせ、直前 GET と不一致なら `stale` で中断。設定は一括処理の開始時に 1 回だけ読む。競合リポは New project の選択肢から除外 |
+| 更新中のサインアウト/PAT 保存を refresh が上書き・失敗時に無条件クリア | 妥当 | 更新完了時に認証情報が開始時と同一か確認してから保存。ネットワーク/5xx/レート制限では消さず、401/403 の確定失敗のみクリア。単体テスト追加 |
+| プライバシーポリシーが実装と不一致 | 妥当 | ジャーナル・ログイン名キャッシュ・installations エンドポイント・接頭辞可変・Limited use を追記 |
+| 書き込みの直列化が Port 単位、Retry-After 無視 | 妥当 | SW 全体で 1 本の書き込みキュー（1 秒間隔）。一括中にレート制限/401 が出たら残りを中断 |
+| 変更なし判定でキャッシュが古いまま | 妥当 | 直前 GET の結果で常にキャッシュを更新 |
+| 書き込み失敗時に GitHub 標準表示へ戻すべき | **不採用** | §24 は読み込み失敗の規定。データは有効で切替ボタンも常にあるため、自動で Original に飛ばす方が体験を損なう |
+| Turbo 遷移で旧ビューが生き残る・ダイアログが残る | 妥当 | モジュール変数で唯一の生存ビューを管理し、遷移時に dispose（ダイアログ全閉、読み込みの世代番号で古い応答を捨てる） |
+| 一括処理が SW 終了に耐えない | **保留（Phase 2）** | Port 通信中は SW が延命される。300 件級の運用が現実になったら per-item 永続化と再開を実装 |
+| MutationObserver が全ページ・全サブツリー | 妥当 | `turbo-frame#user-profile-frame` があればそれだけを監視、無ければ body の直下のみ |
+
+**副次的な発見**: GitHub の一覧 API（`/user/repos`）の `topics` は、Topics 書き換え直後しばらく古い値を返すことがある（M8 復元直後に競合が残って見えた）。`expect` 照合がこのケースを正しく拒否した（「今は Ungrouped。何も書いていない」）。検証スクリプトは一覧 API と topics API が一致するまで待って開始するようにした。
 
 ## 6. リスクと対策
 

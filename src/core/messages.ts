@@ -29,7 +29,7 @@ export type Request =
   | { type: "auth.deviceStart" }
   | { type: "auth.devicePoll"; flowId: string }
   | { type: "auth.installations" }
-  | { type: "repos.setProject"; owner: string; repo: string; project: string | null }
+  | { type: "repos.setProject"; owner: string; repo: string; project: string | null; expect?: string[] | null }
   | { type: "journal.list" };
 
 /** One topic write (or dry run) as recorded before the PUT. */
@@ -38,7 +38,8 @@ export type SetProjectResult = { changed: boolean; before: string[]; after: stri
 
 /** Long-running bulk writes go over a Port named BULK_PORT: page sends BulkRequest, worker streams BulkEvent. */
 export const BULK_PORT = "gtf-bulk";
-export type BulkItem = { owner: string; repo: string; project: string | null };
+/** `expect`: the folder topics the UI believed the repository had; the worker aborts that repository if GitHub differs. null = no check. */
+export type BulkItem = { owner: string; repo: string; project: string | null; expect: string[] | null };
 export type BulkRequest = { type: "bulk.setProject"; items: BulkItem[] };
 export type BulkEvent =
   | { type: "progress"; done: number; total: number; current: string }

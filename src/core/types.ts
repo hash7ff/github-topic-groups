@@ -23,6 +23,7 @@ export type ApiErrorKind =
   | "network"
   | "unsupported"
   | "not_installed"
+  | "stale"
   | "other";
 
 export type ApiErrorInfo = {

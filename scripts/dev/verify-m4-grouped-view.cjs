@@ -10,7 +10,7 @@ const snapshot = () => ({
   status: document.querySelector('#gtf-root .gtf-toolbar-status')?.textContent,
   error: document.querySelector('#gtf-root .gtf-error-panel')?.textContent?.trim().slice(0, 160) || null,
   mode: document.querySelector('#gtf-root .gtf-seg-btn[aria-pressed="true"]')?.textContent,
-  firstRows: [...document.querySelectorAll('#gtf-root .gtf-group[data-key="project-client-a"] .gtf-repo')].map(r => ({ name: r.querySelector('.gtf-repo-name')?.textContent, href: r.querySelector('.gtf-repo-name')?.getAttribute('href'), labels: [...r.querySelectorAll('.gtf-label')].map(l => l.textContent), meta: r.querySelector('.gtf-repo-meta')?.textContent })),
+  firstRows: [...document.querySelectorAll('#gtf-root .gtf-group[data-key="topic-folders-client-a"] .gtf-repo')].map(r => ({ name: r.querySelector('.gtf-repo-name')?.textContent, href: r.querySelector('.gtf-repo-name')?.getAttribute('href'), labels: [...r.querySelectorAll('.gtf-label')].map(l => l.textContent), meta: r.querySelector('.gtf-repo-meta')?.textContent })),
 });
 (async () => {
   const browser = await chromium.connectOverCDP('http://localhost:9224');
@@ -23,11 +23,11 @@ const snapshot = () => ({
   await page.screenshot({ path: SP + '/m4_grouped.png', clip: { x: 400, y: 90, width: 920, height: 760 } });
 
   // collapse Client A, reload, expect still collapsed; expand again
-  await page.click('#gtf-root .gtf-group[data-key="project-client-a"] .gtf-group-header'); await page.waitForTimeout(300);
+  await page.click('#gtf-root .gtf-group[data-key="topic-folders-client-a"] .gtf-group-header'); await page.waitForTimeout(300);
   const c1 = await page.evaluate(snapshot);
   await page.reload({ waitUntil: 'domcontentloaded' }); await waitReady(); await page.waitForTimeout(300);
   const c2 = await page.evaluate(snapshot);
-  await page.click('#gtf-root .gtf-group[data-key="project-client-a"] .gtf-group-header'); await page.waitForTimeout(300);
+  await page.click('#gtf-root .gtf-group[data-key="topic-folders-client-a"] .gtf-group-header'); await page.waitForTimeout(300);
   const c3 = await page.evaluate(snapshot);
   console.log('2 COLLAPSE', JSON.stringify({ afterClick: c1.groups[0], afterReload: c2.groups[0], afterExpand: c3.groups[0] }));
 
@@ -48,23 +48,18 @@ const snapshot = () => ({
   const o3 = await page.evaluate(snapshot);
   console.log('4 TOGGLE', JSON.stringify({ original: { mode: o1.mode, originalHidden: o1.originalHidden, bodyHidden: o1.bodyHidden }, afterReload: { mode: o2.mode, originalHidden: o2.originalHidden, bodyHidden: o2.bodyHidden }, grouped: { mode: o3.mode, originalHidden: o3.originalHidden, bodyHidden: o3.bodyHidden, groups: o3.groups.length } }));
 
-  // Case 6: API failure -> error panel, original view restorable
+  // Case 6: API failure -> error panel, original view restorable (corrupt the stored credential, restore it afterwards)
   const opt = await ctx.newPage(); await opt.goto(`chrome-extension://${EXT_ID}/options.html`);
-  await opt.evaluate(async () => { await chrome.storage.session.clear(); await chrome.storage.local.set({ 'gtf.token': 'ghp_invalid_for_case6' }); });
-  await opt.close();
+  const saved = await opt.evaluate(async () => { const r = await chrome.storage.local.get('gtf.auth'); await chrome.storage.session.clear(); await chrome.storage.local.set({ 'gtf.auth': { kind: 'pat', accessToken: 'ghp_invalid_for_case6' } }); return r['gtf.auth']; });
   await page.reload({ waitUntil: 'domcontentloaded' }); await waitReady(); await page.waitForTimeout(300);
   const e1 = await page.evaluate(snapshot);
-  await page.screenshot({ path: SP + '/m4_error.png', clip: { x: 400, y: 90, width: 920, height: 400 } });
   const hasRetry = await page.$('#gtf-root .gtf-error-panel button:has-text("Retry")');
   await page.click('#gtf-root .gtf-error-panel button:has-text("Show original")'); await page.waitForTimeout(300);
   const e2 = await page.evaluate(snapshot);
   console.log('5 CASE6', JSON.stringify({ error: e1.error, originalHiddenDuringError: e1.originalHidden, hasRetry: !!hasRetry, afterShowOriginal: { mode: e2.mode, originalHidden: e2.originalHidden, bodyHidden: e2.bodyHidden } }));
-
-  // restore good token + grouped mode
-  const opt2 = await ctx.newPage(); await opt2.goto(`chrome-extension://${EXT_ID}/options.html`);
-  await opt2.waitForFunction(() => document.getElementById('status')?.textContent !== 'Checking…', null, { timeout: 10000 });
-  await opt2.fill('#token', TOKEN); await opt2.click('#save'); await opt2.waitForSelector('#result:not([hidden])', { timeout: 30000 });
-  console.log('6 RESTORE', redact(await opt2.textContent('#result'))); await opt2.close();
+  await opt.evaluate(async (saved) => { await chrome.storage.local.set({ 'gtf.auth': saved }); await chrome.storage.session.clear(); }, saved);
+  console.log('6 RESTORE', JSON.stringify({ restoredKind: saved?.kind }));
+  await opt.close();
   await page.reload({ waitUntil: 'domcontentloaded' }); await page.waitForSelector('#gtf-root .gtf-toolbar', { timeout: 30000 }); await page.waitForTimeout(500);
   await page.click('#gtf-root .gtf-seg-btn[data-mode="grouped"]'); await waitReady(); await page.waitForTimeout(300);
   const f = await page.evaluate(snapshot);

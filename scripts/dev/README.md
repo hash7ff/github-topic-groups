@@ -19,3 +19,4 @@ Never reload or touch extensions other than ours; never use CDP ports other than
 - `verify-m6-move-new.cjs` — drives the real UI: Move to… dialog, New project (privacy notice, preselect), bulk create, restore Case 1. Needs `$GTF_READ_TOKEN`.
 - `verify-m7-rename-delete.cjs` — Plan §33 Case 4 (rename) and Case 5 (delete) through the project menu; restores Case 1. Needs `$GTF_READ_TOKEN`.
 - `verify-m8-conflict.cjs <extId>` — seeds two folder topics on gtf-test-firmware, checks the Conflicts section and Fix, restores. Needs `$GTF_READ_TOKEN`.
+- `verify-hardening.cjs <extId>` — evaluates inside the content-script world (via CDP): storage.local must be denied, options-only messages refused, prefix/dry-run changes refused, writes for other owners refused, stale expectations abort without writing, malformed messages rejected.

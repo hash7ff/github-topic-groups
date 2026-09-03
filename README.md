@@ -63,6 +63,15 @@ pasted instead of signing in.
   as project topics.
 - Full policy: https://hash7ff.github.io/github-topic-folders/privacy.html
 
+## Known limitations
+
+- GitHub's topics API replaces the whole topic list and offers no conditional write. The extension re-reads the
+  topics immediately before each write and refuses to write when the folder topic differs from what you saw, but a
+  topic added by another client in the fraction of a second between that read and the write could still be lost.
+- With a GitHub App installation limited to selected repositories, GitHub still lists all your public repositories
+  (read-only); moving one of them fails until the app is installed on it. Installing on *All repositories* avoids this.
+- Folder names are derived from the topic (`topic-folders-my-oss` → "My Oss"); casing is not preserved.
+
 ## Documentation
 
 - `docs/Plan.md` — specification (Japanese)

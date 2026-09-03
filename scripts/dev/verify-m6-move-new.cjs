@@ -14,8 +14,21 @@ const topics = async () => ({ api: (await gh('/repos/mutsuyuki/gtf-test-api/topi
   const moveBtn = (repo) => page.locator(`#gtf-root li.gtf-repo[data-repo="${repo}"] .gtf-repo-actions button`);
   const dlg = () => page.locator('dialog.gtf-dialog[open]');
 
+  const opt0 = await ctx.newPage(); await opt0.goto(`chrome-extension://${process.argv[2]}/options.html`);
+  await opt0.evaluate(async () => { const r = await chrome.storage.local.get('gtf.prefs'); await chrome.storage.local.set({ 'gtf.prefs': { ...(r['gtf.prefs'] || {}), privacyNoticeDismissed: false } }); }); await opt0.close();
+  // GitHub's list endpoint can lag behind topic writes: wait until it agrees with the topics endpoint for the test repos.
+  for (let i = 0; i < 30; i++) {
+    const list = await gh('/user/repos?affiliation=owner&per_page=100&sort=full_name');
+    const byName = Object.fromEntries(list.map(r => [r.name, (r.topics || []).slice().sort().join(',')]));
+    const t = await topics();
+    const same = ['api', 'frontend', 'firmware'].every(k => byName['gtf-test-' + k] === t[k].slice().sort().join(','));
+    if (same) { console.log('list endpoint consistent after', i, 'polls'); break; }
+    await new Promise(r => setTimeout(r, 2000));
+  }
   await page.goto('https://github.com/mutsuyuki?tab=repositories', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#gtf-root .gtf-group', { timeout: 60000 });
+  await page.click('#gtf-root .gtf-toolbar button[title="Reload repositories from GitHub"]'); await page.waitForTimeout(500);
+  await page.waitForFunction(() => !/Loading/.test(document.querySelector('#gtf-root .gtf-toolbar-status')?.textContent || ''), null, { timeout: 60000 }); await page.waitForTimeout(300);
   console.log('0 START groups', JSON.stringify(await groups()), 'github', JSON.stringify(await topics()));
 
   // 1) Move firmware -> Client A via dialog
@@ -34,7 +47,7 @@ const topics = async () => ({ api: (await gh('/repos/mutsuyuki/gtf-test-api/topi
   const preselected = await dlg().locator('.gtf-picker-item input:checked').count();
   await dlg().locator('input[type=text].gtf-input').fill('Client B');
   const preview = await dlg().locator('.gtf-preview').textContent();
-  await dlg().locator('#gtf-dismiss-notice').check();
+  if (noticeVisible === 1) await dlg().locator('#gtf-dismiss-notice').check();
   await dlg().locator('.gtf-btn-primary').click();
   console.log('2 NEW PROJECT Client B (api)', JSON.stringify({ noticeVisible: noticeVisible === 1, preselected, preview, flash: await waitFlash(), groups: await groups(), github: (await topics()).api }));
   await dismissFlash();

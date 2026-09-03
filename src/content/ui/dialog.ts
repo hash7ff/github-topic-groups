@@ -3,6 +3,16 @@ import { h } from "./h.ts";
 
 export type Dialog = { el: HTMLDialogElement; body: HTMLElement; close(): void };
 
+const openDialogs = new Set<HTMLDialogElement>();
+/** Called when the view is torn down (Turbo navigation): a dialog must never outlive the page it belongs to. */
+export function closeAllDialogs(): void {
+  for (const d of [...openDialogs]) {
+    if (d.open) d.close();
+    d.remove();
+  }
+  openDialogs.clear();
+}
+
 export function openDialog(title: string, opts: { className?: string } = {}): Dialog {
   const body = h("div", { className: "gtf-dialog-body" });
   const el = h(
@@ -19,7 +29,11 @@ export function openDialog(title: string, opts: { className?: string } = {}): Di
   const close = () => {
     if (el.open) el.close();
   };
-  el.addEventListener("close", () => el.remove());
+  openDialogs.add(el);
+  el.addEventListener("close", () => {
+    openDialogs.delete(el);
+    el.remove();
+  });
   // click on the backdrop closes
   el.addEventListener("click", (e) => {
     if (e.target === el) close();
