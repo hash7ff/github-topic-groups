@@ -8,7 +8,12 @@ import { filterGrouped } from "../core/search.ts";
 import { relativeTime } from "../core/relativeTime.ts";
 import { DEFAULT_PREFS, type AuthStatus, type Prefs, type ReposList, type ViewMode } from "../core/messages.ts";
 import type { ApiErrorInfo } from "../core/types.ts";
-import { buildToolbar, renderError, renderGroups, renderLoading, renderUnconfigured, setSegmentedMode, type ViewActions } from "./ui/view.ts";
+import { buildToolbar, describeError, renderError, renderGroups, renderLoading, renderUnconfigured, setSegmentedMode, type ViewActions } from "./ui/view.ts";
+import { openMoveDialog } from "./ui/moveDialog.ts";
+import { openNewProjectDialog } from "./ui/newProjectDialog.ts";
+import { runBulk } from "./bulk.ts";
+import { projectTopics } from "../core/topic.ts";
+import type { BulkItem, SetProjectResult } from "../core/messages.ts";
 
 const ROOT_ID = "gtf-root";
 const ANCHOR_ID = "user-repositories-list";
@@ -38,6 +43,9 @@ class GroupedView {
   private readonly body: HTMLElement;
   private readonly status: HTMLElement;
   private readonly seg: HTMLElement;
+  private readonly flash: HTMLElement;
+  private flashTimer: number | undefined;
+  private busy = false;
   private prefs: Prefs = DEFAULT_PREFS;
   private phase: Phase = { kind: "loading" };
   private query = "";
@@ -59,12 +67,15 @@ class GroupedView {
       refresh: () => void this.load(true),
       retry: () => void this.load(true),
       openSettings: () => void send({ type: "options.open" }),
+      moveRepo: (name) => this.openMove(name),
+      newProject: () => this.openNewProject([]),
     };
     const { toolbar, status, seg } = buildToolbar(actions);
     this.status = status;
     this.seg = seg;
     this.body = h("div", { className: "gtf-body" });
-    this.root = h("div", { id: ROOT_ID, className: "gtf-root", dataset: { gtfUrl: location.href } }, toolbar, this.body);
+    this.flash = h("div", { className: "gtf-flash", hidden: true });
+    this.root = h("div", { id: ROOT_ID, className: "gtf-root", dataset: { gtfUrl: location.href } }, toolbar, this.flash, this.body);
     this.actions = actions;
   }
 
@@ -99,6 +110,91 @@ class GroupedView {
     if (this.disposed) return;
     this.phase = list.ok ? { kind: "ready", data: list.data, grouped: groupRepos(list.data.repos, this.prefs.prefix) } : { kind: "error", error: list.error };
     this.render();
+  }
+
+  // ---- writes (M6): Move to… / New project ----
+  private openMove(repoName: string): void {
+    if (this.phase.kind !== "ready" || this.busy) return;
+    const repo = this.phase.data.repos.find((r) => r.name === repoName);
+    if (!repo) return;
+    const current = projectTopics(repo.topics, this.prefs.prefix)[0] ?? null;
+    openMoveDialog({
+      repoName,
+      currentTopic: current,
+      projects: this.phase.grouped.projects.map((p) => ({ topic: p.topic, name: p.name, count: p.repos.length })),
+      onSelect: (project) => {
+        const target = project === null ? "Ungrouped" : (this.phase.kind === "ready" && this.phase.grouped.projects.find((p) => p.topic === project)?.name) || project;
+        void this.applyWrites([{ owner: this.ctx.owner, repo: repoName, project }], `Moved ${repoName} to ${target}.`);
+      },
+      onNewProject: () => this.openNewProject([repoName]),
+    });
+  }
+
+  private openNewProject(preselected: string[]): void {
+    if (this.phase.kind !== "ready" || this.busy) return;
+    const existing = new Set(this.phase.grouped.projects.map((p) => p.topic));
+    openNewProjectDialog({
+      repos: this.phase.data.repos,
+      preselected,
+      prefix: this.prefs.prefix,
+      existingTopics: existing,
+      showPrivacyNotice: !this.prefs.privacyNoticeDismissed,
+      onCreate: async (topic, displayName, repoNames, dismiss) => {
+        if (dismiss) {
+          this.prefs = { ...this.prefs, privacyNoticeDismissed: true };
+          void send({ type: "prefs.set", patch: { privacyNoticeDismissed: true } });
+        }
+        const items = repoNames.map((repo) => ({ owner: this.ctx.owner, repo, project: topic }));
+        await this.applyWrites(items, `${existing.has(topic) ? "Moved" : "Created"} ${displayName}: ${repoNames.length} repositor${repoNames.length === 1 ? "y" : "ies"}.`, true);
+      },
+    });
+  }
+
+  /** Runs writes through the service worker, then reloads from the (patched) cache. UI changes only after GitHub confirmed. */
+  private async applyWrites(items: BulkItem[], successMessage: string, rethrow = false): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+    this.status.textContent = items.length === 1 ? `Updating ${items[0]!.repo}…` : `Updating 0/${items.length}…`;
+    try {
+      let failed: Array<{ repo: string; error: ApiErrorInfo }> = [];
+      let changedCount = 0;
+      if (items.length === 1) {
+        const item = items[0]!;
+        const res = await send<SetProjectResult>({ type: "repos.setProject", owner: item.owner, repo: item.repo, project: item.project });
+        if (res.ok) changedCount = res.data.changed ? 1 : 0;
+        else failed = [{ repo: item.repo, error: res.error }];
+        if (res.ok && res.data.dryRun) successMessage += " (dry run — nothing written)";
+      } else {
+        const result = await runBulk(items, (done, total) => {
+          this.status.textContent = `Updating ${done}/${total}…`;
+        });
+        failed = result.failed;
+        changedCount = result.succeeded.filter((s) => s.result.changed).length;
+        if (result.succeeded.some((s) => s.result.dryRun)) successMessage += " (dry run — nothing written)";
+      }
+      await this.load(false);
+      if (failed.length === 0) {
+        this.showFlash("ok", changedCount === 0 ? "Nothing to change." : successMessage);
+      } else {
+        const first = failed[0]!;
+        const detail = failed.map((f) => `${f.repo}: ${describeError(f.error)}`).join(" · ");
+        this.showFlash("error", `${failed.length} of ${items.length} failed. ${detail}`, first.error.installUrl);
+        if (rethrow) throw new Error(`${failed.length} of ${items.length} repositories could not be updated. ${describeError(first.error)}`);
+      }
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private showFlash(kind: "ok" | "error", message: string, installUrl?: string): void {
+    if (this.flashTimer !== undefined) clearTimeout(this.flashTimer);
+    while (this.flash.firstChild) this.flash.removeChild(this.flash.firstChild);
+    this.flash.className = `gtf-flash gtf-flash-${kind}`;
+    this.flash.append(h("span", {}, message));
+    if (installUrl) this.flash.append(" ", h("a", { className: "gtf-btn", href: installUrl }, "Install the app on more repositories"));
+    this.flash.append(h("button", { className: "gtf-btn gtf-flash-close", type: "button", ariaLabel: "Dismiss", onClick: () => (this.flash.hidden = true) }, "×"));
+    this.flash.hidden = false;
+    if (kind === "ok") this.flashTimer = window.setTimeout(() => (this.flash.hidden = true), 6000);
   }
 
   private toggleGroup(key: string): void {

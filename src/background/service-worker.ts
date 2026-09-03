@@ -26,6 +26,15 @@ function toErrorInfo(e: unknown): ApiErrorInfo {
   return { kind: "other", status: 0, message: e instanceof Error ? e.message : String(e) };
 }
 
+/** 403/404 on a write under a GitHub App token usually means the app is not installed on that repository. */
+async function writeErrorInfo(e: unknown): Promise<ApiErrorInfo> {
+  const info = toErrorInfo(e);
+  if (info.kind !== "forbidden" && info.kind !== "not_found") return info;
+  const auth = await storage.getAuth();
+  if (auth?.kind !== "github-app") return info;
+  return { ...info, installUrl: GITHUB_APP_INSTALL_URL, message: `${info.message} — the Topic Folders app may not be installed on this repository.` };
+}
+
 async function resolveLogin(): Promise<string> {
   const cached = await storage.getLogin();
   if (cached) return cached;
@@ -164,7 +173,7 @@ chrome.runtime.onConnect.addListener((port) => {
         if (res.ok) succeeded.push({ repo: item.repo, result: res.data });
         else failed.push({ repo: item.repo, error: res.error });
       } catch (e) {
-        failed.push({ repo: item.repo, error: toErrorInfo(e) });
+        failed.push({ repo: item.repo, error: await writeErrorInfo(e) });
       }
       if (i < total - 1) await new Promise((r) => setTimeout(r, WRITE_SPACING_MS));
     }
@@ -196,7 +205,11 @@ async function handle(req: Request): Promise<MsgResponse<unknown>> {
     case "repos.list":
       return listRepos(req.owner, req.force === true);
     case "repos.setProject":
-      return setProject(req.owner, req.repo, req.project);
+      try {
+        return await setProject(req.owner, req.repo, req.project);
+      } catch (e) {
+        return fail(await writeErrorInfo(e));
+      }
     case "journal.list":
       return ok(await storage.listJournal());
     case "prefs.get":

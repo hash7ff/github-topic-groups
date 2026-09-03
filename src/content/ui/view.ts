@@ -13,6 +13,8 @@ export type ViewActions = {
   refresh(): void;
   retry(): void;
   openSettings(): void;
+  moveRepo(repoName: string): void;
+  newProject(): void;
 };
 
 export function describeError(error: ApiErrorInfo): string {
@@ -42,6 +44,7 @@ export function buildToolbar(actions: ViewActions): { toolbar: HTMLElement; stat
     { className: "gtf-toolbar" },
     seg,
     search,
+    h("button", { className: "gtf-btn", type: "button", onClick: () => actions.newProject() }, "New project"),
     h("button", { className: "gtf-btn", type: "button", title: "Reload repositories from GitHub", onClick: () => actions.refresh() }, "Refresh"),
     status,
   );
@@ -61,8 +64,15 @@ function labels(repo: RepoSummary): HTMLElement[] {
   return out;
 }
 
-export function repoRow(repo: RepoSummary, extra?: HTMLElement): HTMLElement {
+export function repoRow(repo: RepoSummary, extra?: HTMLElement, actions?: ViewActions): HTMLElement {
   const updated = relativeTime(repo.pushedAt ?? repo.updatedAt);
+  const moveBtn = actions
+    ? h(
+        "button",
+        { className: "gtf-btn", type: "button", disabled: repo.archived, title: repo.archived ? "Archived repositories are read-only on GitHub" : "Move this repository to another project", onClick: () => actions.moveRepo(repo.name) },
+        "Move to…",
+      )
+    : null;
   return h(
     "li",
     { className: "gtf-repo", dataset: { repo: repo.name } },
@@ -78,12 +88,12 @@ export function repoRow(repo: RepoSummary, extra?: HTMLElement): HTMLElement {
         updated ? h("span", {}, `Updated ${updated}`) : null,
       ),
     ),
-    extra ? h("div", { className: "gtf-repo-actions" }, extra) : null,
+    extra || moveBtn ? h("div", { className: "gtf-repo-actions" }, extra ?? null, moveBtn) : null,
   );
 }
 
 function groupSection(key: string, name: string, repos: readonly RepoSummary[], collapsed: boolean, actions: ViewActions, className = ""): HTMLElement {
-  const list = h("ul", { className: "gtf-repos", hidden: collapsed }, ...repos.map((r) => repoRow(r)));
+  const list = h("ul", { className: "gtf-repos", hidden: collapsed }, ...repos.map((r) => repoRow(r, undefined, actions)));
   const header = h(
     "button",
     { className: "gtf-group-header", type: "button", onClick: () => actions.toggleGroup(key) },
