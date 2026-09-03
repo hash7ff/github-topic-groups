@@ -48,6 +48,7 @@
     client secret も backend も不要で Service Worker から完結。ユーザーはボタン → GitHub のページで 8 文字コード入力 → 承認、の 3 手。PAT 入力は上級者向けの予備として残す。
     順序: M4（Grouped View、読み取り専用トークンで検証）→ **M4.5 認証切替** → M5 以降の書き込みは GitHub App のトークンで検証（App をテストリポ 3 つだけにインストール＝影響範囲の限定）。
     `chrome.identity.launchWebAuthFlow` + OAuth App は code 交換に client secret が要るので単体拡張では不可。※実装時に GitHub 側仕様（Device Flow の有効化、user-to-server token の期限と refresh、`GET /user/installations`）を再確認。
+13. **接頭辞は既定 `topic-folders-`、設定で変更可**（決定 2026-09-03、田中さん提案）。`project-` は公開リポだけで `project-management` 6,762 件・`project-template` 1,490 件・`project-euler` 1,335 件が既に使っており、フォルダと誤認するだけでなく「Project 削除」で他人の Topic を消せてしまう。`folder-` も `folder-structure` 413 件で同様。`topic-folders-client-a` は 0 件。名前部分は 36 文字まで。Plan.md の `project-` 表記は「既定接頭辞」の意味で読む。
 12. **トークンの扱い**: 本番トークンは田中さん自身のブラウザにしか存在せず、エージェントには渡さない。
     検証用プロファイル（9224）には、読み取り専用マイルストーン（M3/M4）は `.env` の読み取り専用トークン（実リポを壊す余地なし）を使い、書き込み系は M4.5 の Sign in で得たトークン（テストリポ限定）を使う。**PAT を新規に作る作業は発生させない**。
 

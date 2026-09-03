@@ -1,15 +1,15 @@
-import { isProjectTopic } from "./topic.ts";
+import { DEFAULT_PREFIX, isProjectTopic } from "./topic.ts";
 
 /**
  * The single most important function in this extension: build the full topic list to PUT back.
- * Every non-`project-*` topic is preserved in its original order; the project topic (if any) is appended once.
- * `project === null` means "Ungrouped" (all project topics removed).
+ * Every topic outside the folder prefix is preserved in its original order; the folder topic (if any) is appended once.
+ * `project === null` means "Ungrouped" (all folder topics removed).
  */
-export function withProjectTopic(current: readonly string[], project: string | null): string[] {
+export function withProjectTopic(current: readonly string[], project: string | null, prefix: string = DEFAULT_PREFIX): string[] {
   const kept: string[] = [];
   const seen = new Set<string>();
   for (const topic of current) {
-    if (isProjectTopic(topic) || seen.has(topic)) continue;
+    if (isProjectTopic(topic, prefix) || seen.has(topic)) continue;
     seen.add(topic);
     kept.push(topic);
   }

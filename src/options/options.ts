@@ -1,4 +1,4 @@
-import type { AuthStatus, Request, Response } from "../core/messages.ts";
+import type { AuthStatus, Prefs, Request, Response } from "../core/messages.ts";
 import type { ApiErrorInfo } from "../core/types.ts";
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -11,6 +11,9 @@ const resultEl = $<HTMLParagraphElement>("result");
 const tokenInput = $<HTMLInputElement>("token");
 const saveBtn = $<HTMLButtonElement>("save");
 const clearBtn = $<HTMLButtonElement>("clear");
+const prefixInput = $<HTMLInputElement>("prefix");
+const savePrefixBtn = $<HTMLButtonElement>("savePrefix");
+const prefixResult = $<HTMLParagraphElement>("prefixResult");
 
 async function send<T>(req: Request): Promise<Response<T>> {
   try {
@@ -74,4 +77,24 @@ clearBtn.addEventListener("click", async () => {
   }
 });
 
+async function loadPrefs(): Promise<void> {
+  const res = await send<Prefs>({ type: "prefs.get" });
+  if (res.ok) prefixInput.value = res.data.prefix;
+}
+
+savePrefixBtn.addEventListener("click", async () => {
+  const prefix = prefixInput.value.trim();
+  const res = await send<Prefs>({ type: "prefs.set", patch: { prefix } });
+  prefixResult.hidden = false;
+  if (res.ok) {
+    prefixInput.value = res.data.prefix;
+    prefixResult.className = "result ok";
+    prefixResult.textContent = `Prefix saved: ${res.data.prefix}  Reload the GitHub repositories page to apply.`;
+  } else {
+    prefixResult.className = "result error";
+    prefixResult.textContent = describe(res.error);
+  }
+});
+
 void refresh();
+void loadPrefs();

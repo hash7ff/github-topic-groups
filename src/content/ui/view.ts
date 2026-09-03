@@ -95,12 +95,12 @@ function groupSection(key: string, name: string, repos: readonly RepoSummary[], 
   return h("section", { className: `gtf-group ${className}`.trim(), dataset: { key } }, header, list);
 }
 
-function conflictSection(grouped: Grouped): HTMLElement | null {
+function conflictSection(grouped: Grouped, prefix: string): HTMLElement | null {
   if (grouped.conflicts.length === 0) return null;
   const rows = grouped.conflicts.map((c) =>
     repoRow(
       c.repo,
-      h("span", { className: "gtf-conflict-note" }, `Multiple project topics: ${c.topics.map(displayNameFromTopic).join(", ")}`),
+      h("span", { className: "gtf-conflict-note" }, `Multiple folder topics: ${c.topics.map((t) => displayNameFromTopic(t, prefix)).join(", ")}`),
     ),
   );
   const header = h(
@@ -112,7 +112,7 @@ function conflictSection(grouped: Grouped): HTMLElement | null {
   return h("section", { className: "gtf-group gtf-conflicts", dataset: { key: "__conflicts" } }, header, h("ul", { className: "gtf-repos" }, ...rows));
 }
 
-export function renderGroups(body: HTMLElement, grouped: Grouped, collapsed: Record<string, boolean>, searching: boolean, actions: ViewActions): void {
+export function renderGroups(body: HTMLElement, grouped: Grouped, collapsed: Record<string, boolean>, searching: boolean, prefix: string, actions: ViewActions): void {
   clear(body);
   const isCollapsed = (key: string) => !searching && collapsed[key] === true;
   const total = grouped.projects.reduce((n, p) => n + p.repos.length, 0) + grouped.ungrouped.length + grouped.conflicts.length;
@@ -120,7 +120,7 @@ export function renderGroups(body: HTMLElement, grouped: Grouped, collapsed: Rec
     body.append(h("p", { className: "gtf-empty" }, searching ? "No repositories match your search." : "No repositories found."));
     return;
   }
-  const conflicts = conflictSection(grouped);
+  const conflicts = conflictSection(grouped, prefix);
   if (conflicts) body.append(conflicts);
   for (const p of grouped.projects as ProjectGroup[]) body.append(groupSection(p.topic, p.name, p.repos, isCollapsed(p.topic), actions));
   if (grouped.ungrouped.length > 0) body.append(groupSection(UNGROUPED_KEY, "Ungrouped", grouped.ungrouped, isCollapsed(UNGROUPED_KEY), actions, "gtf-ungrouped"));

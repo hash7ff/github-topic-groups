@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GitHub Topic Folders</title>
-  <meta name="description" content="A Chrome extension that shows your GitHub repositories grouped into folders by project-* topics. Topics are the only source of truth.">
+  <meta name="description" content="A Chrome extension that shows your GitHub repositories grouped into folders by topic-folders-* topics. Topics are the only source of truth.">
   <link rel="icon" href="icon128.png">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -22,20 +22,20 @@
   </p>
 
   <h2>How it works</h2>
-  <p>Give a repository a topic that starts with <code>project-</code>. That is the whole data model.</p>
+  <p>Give a repository a topic that starts with <code>topic-folders-</code>. That is the whole data model.</p>
   <div class="card"><pre class="demo">Repositories                      Repositories (grouped)
 
-api        project-client-a        ▼ Client A  (3)
-frontend   project-client-a            api
-firmware   project-client-a            frontend
-cool-lib   project-oss                 firmware
-test-tool                          ▶ OSS  (1)
-                                   ▼ Ungrouped  (1)
-                                       test-tool</pre></div>
+api        topic-folders-client-a     ▼ Client A  (3)
+frontend   topic-folders-client-a         api
+firmware   topic-folders-client-a         frontend
+cool-lib   topic-folders-oss              firmware
+test-tool                             ▶ OSS  (1)
+                                      ▼ Ungrouped  (1)
+                                          test-tool</pre></div>
   <ul>
     <li><strong>Topics are the source of truth.</strong> There is no hidden database. Uninstall the extension and your classification is still on GitHub, as plain topics. Use another machine and it is already there.</li>
     <li><strong>Repositories keep their names.</strong> No <code>client-a-api</code> prefixes; <code>api</code> stays <code>api</code>.</li>
-    <li><strong>Your other topics are never touched.</strong> Moving a repository between projects rewrites only the <code>project-*</code> topic.</li>
+    <li><strong>Your other topics are never touched.</strong> Moving a repository between projects rewrites only the <code>topic-folders-*</code> topic.</li>
     <li><strong>Always escapable.</strong> A <em>Grouped | Original</em> switch brings back GitHub's own list at any time.</li>
   </ul>
 

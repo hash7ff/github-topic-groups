@@ -1,14 +1,17 @@
 import type { ApiErrorInfo, RepoSummary } from "./types.ts";
+import { DEFAULT_PREFIX } from "./topic.ts";
 
 export type ViewMode = "grouped" | "original";
 /** UI preferences. Never classification data (that lives only in GitHub topics, Plan.md §3.1 / §23). */
 export type Prefs = {
   viewMode: ViewMode;
+  /** Folder-topic prefix, e.g. "topic-folders-". Per browser; the topics themselves stay on GitHub. */
+  prefix: string;
   /** group key (project topic, or "__ungrouped") -> collapsed */
   collapsed: Record<string, boolean>;
   privacyNoticeDismissed: boolean;
 };
-export const DEFAULT_PREFS: Prefs = { viewMode: "grouped", collapsed: {}, privacyNoticeDismissed: false };
+export const DEFAULT_PREFS: Prefs = { viewMode: "grouped", prefix: DEFAULT_PREFIX, collapsed: {}, privacyNoticeDismissed: false };
 export const UNGROUPED_KEY = "__ungrouped";
 
 /** Content script / options page -> service worker. The token never travels in these messages except `auth.setToken` from the options page. */

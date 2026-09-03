@@ -44,6 +44,7 @@ export async function clearSession(): Promise<void> {
 
 // ---- UI preferences (not secrets, not classification data) ----
 import { DEFAULT_PREFS, type Prefs } from "../core/messages.ts";
+import { DEFAULT_PREFIX, isValidPrefix } from "../core/topic.ts";
 const PREFS_KEY = "gtf.prefs";
 
 export async function getPrefs(): Promise<Prefs> {
@@ -51,6 +52,7 @@ export async function getPrefs(): Promise<Prefs> {
   const v = (r[PREFS_KEY] ?? {}) as Partial<Prefs>;
   return {
     viewMode: v.viewMode === "original" ? "original" : "grouped",
+    prefix: typeof v.prefix === "string" && isValidPrefix(v.prefix) ? v.prefix : DEFAULT_PREFIX,
     collapsed: typeof v.collapsed === "object" && v.collapsed !== null ? v.collapsed : {},
     privacyNoticeDismissed: v.privacyNoticeDismissed === true,
   };

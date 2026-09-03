@@ -1,5 +1,5 @@
 import type { RepoSummary } from "./types.ts";
-import { displayNameFromTopic, projectTopics } from "./topic.ts";
+import { DEFAULT_PREFIX, displayNameFromTopic, projectTopics } from "./topic.ts";
 
 export type ProjectGroup = { topic: string; name: string; repos: RepoSummary[] };
 export type Conflict = { repo: RepoSummary; topics: string[] };
@@ -8,14 +8,14 @@ export type Grouped = { projects: ProjectGroup[]; ungrouped: RepoSummary[]; conf
 const collator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
 export const byName = (a: { name: string }, b: { name: string }): number => collator.compare(a.name, b.name);
 
-/** Exactly one project topic -> that project; none -> Ungrouped; several -> Conflict (never auto-resolved). */
-export function groupRepos(repos: readonly RepoSummary[]): Grouped {
+/** Exactly one folder topic -> that project; none -> Ungrouped; several -> Conflict (never auto-resolved). */
+export function groupRepos(repos: readonly RepoSummary[], prefix: string = DEFAULT_PREFIX): Grouped {
   const byTopic = new Map<string, RepoSummary[]>();
   const ungrouped: RepoSummary[] = [];
   const conflicts: Conflict[] = [];
 
   for (const repo of repos) {
-    const topics = projectTopics(repo.topics);
+    const topics = projectTopics(repo.topics, prefix);
     const first = topics[0];
     if (first === undefined) {
       ungrouped.push(repo);
@@ -30,7 +30,7 @@ export function groupRepos(repos: readonly RepoSummary[]): Grouped {
 
   const projects: ProjectGroup[] = [...byTopic.entries()].map(([topic, list]) => ({
     topic,
-    name: displayNameFromTopic(topic),
+    name: displayNameFromTopic(topic, prefix),
     repos: list.sort(byName),
   }));
   projects.sort(byName);

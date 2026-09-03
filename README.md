@@ -3,9 +3,11 @@
 A Chrome extension that shows your GitHub repositories grouped into folders, GitLab-group style,
 using **GitHub Topics** as the only source of truth.
 
-Tag a repository with a topic like `project-client-a` and the Repositories tab on your profile
+Tag a repository with a topic like `topic-folders-client-a` and the Repositories tab on your profile
 (`github.com/<you>?tab=repositories`) shows it under a collapsible **Client A** folder.
-Repositories without a `project-*` topic appear under **Ungrouped**. Nothing is stored anywhere but GitHub:
+Repositories without a `topic-folders-*` topic appear under **Ungrouped**. The prefix is configurable in the
+extension settings; the default was chosen because generic prefixes such as `project-` already appear on thousands of
+repositories (`project-management`, `project-euler`, …) and would be misread as folders. Nothing is stored anywhere but GitHub:
 uninstall the extension and your classification is still there, as plain topics.
 
 > **Status: early development.** v0.1 (read-only grouped view) works; moving repositories between
@@ -16,7 +18,7 @@ uninstall the extension and your classification is still there, as plain topics.
 
 - **Topics are the source of truth.** No hidden database. Works from any machine with the same GitHub account.
 - **Never rename repositories.** `api` stays `api`; the project lives in the topic.
-- **Never destroy topics.** Every non-`project-*` topic is preserved when a repository is moved.
+- **Never destroy topics.** Every non-`topic-folders-*` topic is preserved when a repository is moved.
 - **Always escapable.** A `Grouped | Original` switch restores GitHub's own list at any time, and the
   original list is never hidden while the extension has an error.
 - **Minimal DOM dependency.** Only the owner (from the URL) and one anchor element are read from GitHub's page;

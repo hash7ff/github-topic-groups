@@ -8,7 +8,7 @@
 <body>
   <main>
     <h1>GitHub Topic Folders</h1>
-    <p class="muted">Groups your repositories on <code>github.com/&lt;you&gt;?tab=repositories</code> by <code>project-*</code> topics. Topics on GitHub stay the only source of truth.</p>
+    <p class="muted">Groups your repositories on <code>github.com/&lt;you&gt;?tab=repositories</code> by <code>topic-folders-*</code> topics. Topics on GitHub stay the only source of truth.</p>
 
     <section>
       <h2>GitHub token</h2>
@@ -32,12 +32,25 @@
     </section>
 
     <section>
+      <h2>Advanced</h2>
+      <label for="prefix">Folder topic prefix</label>
+      <div class="row">
+        <input id="prefix" type="text" autocomplete="off" spellcheck="false" placeholder="topic-folders-">
+        <button id="savePrefix" type="button" class="secondary">Save prefix</button>
+      </div>
+      <p class="muted">Topics starting with this prefix are shown as folders; e.g. <code>topic-folders-client-a</code> becomes the folder <em>Client A</em>.
+        Lowercase letters, numbers and hyphens, ending with a hyphen. This setting lives in this browser only: repositories tagged with a different prefix are not recognised as folders until re-tagged.
+        Choose a prefix nobody uses for anything else, because "Delete project" removes topics with this prefix.</p>
+      <p id="prefixResult" class="result" hidden></p>
+    </section>
+
+    <section>
       <h2>Important</h2>
       <ul>
         <li><strong>Topic names are public</strong>, even on private repositories. Do not use confidential client or project names as project topics.</li>
         <li>The token is stored locally in this browser profile (<code>chrome.storage.local</code>) and is sent only to <code>api.github.com</code>. It is never given to the GitHub web page or written to logs.</li>
         <li>This extension only reads your repository list and replaces repository topics. It never deletes repositories or changes anything else.</li>
-        <li>Every non-<code>project-*</code> topic is preserved when a repository is moved between projects.</li>
+        <li>Every topic outside the folder prefix is preserved when a repository is moved between projects.</li>
       </ul>
     </section>
   </main>

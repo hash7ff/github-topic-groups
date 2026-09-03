@@ -1,28 +1,43 @@
-// Pure helpers around the `project-*` topic convention. No chrome.* / DOM access here.
+// Pure helpers around the folder-topic convention (`<prefix><slug>`). No chrome.* / DOM access here.
 
-export const PROJECT_PREFIX = "project-";
+/**
+ * Default prefix. `project-` was rejected because thousands of public repositories already carry topics such as
+ * `project-management` / `project-euler` (counted 2026-09-03), which the extension would misread as folders and could
+ * even delete via "Delete project". The prefix is configurable per browser (Prefs.prefix).
+ */
+export const DEFAULT_PREFIX = "topic-folders-";
 /** GitHub: topics are lowercase letters, numbers and hyphens, 50 chars max, 20 per repo (verified 2026-09-03). */
 export const TOPIC_MAX_LENGTH = 50;
 export const TOPICS_PER_REPO_MAX = 20;
-export const PROJECT_NAME_MAX_LENGTH = TOPIC_MAX_LENGTH - PROJECT_PREFIX.length; // 42
+export const PREFIX_MAX_LENGTH = 30;
 
 const TOPIC_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+const PREFIX_PATTERN = /^[a-z0-9][a-z0-9-]*-$/;
 
 export function isValidTopic(topic: string): boolean {
   return topic.length > 0 && topic.length <= TOPIC_MAX_LENGTH && TOPIC_PATTERN.test(topic);
 }
 
-export function isProjectTopic(topic: string): boolean {
-  return topic.startsWith(PROJECT_PREFIX) && topic.length > PROJECT_PREFIX.length;
+/** A prefix is a valid topic fragment that ends with a hyphen and leaves room for a name. */
+export function isValidPrefix(prefix: string): boolean {
+  return prefix.length >= 2 && prefix.length <= PREFIX_MAX_LENGTH && PREFIX_PATTERN.test(prefix);
 }
 
-export function projectTopics(topics: readonly string[]): string[] {
-  return topics.filter(isProjectTopic);
+export function maxNameLength(prefix: string): number {
+  return TOPIC_MAX_LENGTH - prefix.length;
 }
 
-/** `project-client-a` -> `Client A`. Lossy on purpose (the topic stays the source of truth). */
-export function displayNameFromTopic(topic: string): string {
-  const slug = topic.startsWith(PROJECT_PREFIX) ? topic.slice(PROJECT_PREFIX.length) : topic;
+export function isProjectTopic(topic: string, prefix: string = DEFAULT_PREFIX): boolean {
+  return topic.startsWith(prefix) && topic.length > prefix.length;
+}
+
+export function projectTopics(topics: readonly string[], prefix: string = DEFAULT_PREFIX): string[] {
+  return topics.filter((t) => isProjectTopic(t, prefix));
+}
+
+/** `topic-folders-client-a` -> `Client A`. Lossy on purpose (the topic stays the source of truth). */
+export function displayNameFromTopic(topic: string, prefix: string = DEFAULT_PREFIX): string {
+  const slug = topic.startsWith(prefix) ? topic.slice(prefix.length) : topic;
   return slug
     .split("-")
     .filter((w) => w.length > 0)
@@ -35,10 +50,10 @@ export type NormalizedProjectName =
   | { ok: false; error: string; slug: string };
 
 /**
- * `Client A` -> `project-client-a`. NFKC-normalises, lowercases, collapses anything that is not [a-z0-9] into single hyphens.
+ * `Client A` -> `<prefix>client-a`. NFKC-normalises, lowercases, collapses anything that is not [a-z0-9] into single hyphens.
  * Characters GitHub topics cannot hold (e.g. Japanese) are dropped; the caller must show the resulting topic before writing.
  */
-export function normalizeProjectName(displayName: string): NormalizedProjectName {
+export function normalizeProjectName(displayName: string, prefix: string = DEFAULT_PREFIX): NormalizedProjectName {
   const slug = displayName
     .normalize("NFKC")
     .toLowerCase()
@@ -47,10 +62,11 @@ export function normalizeProjectName(displayName: string): NormalizedProjectName
   if (slug.length === 0) {
     return { ok: false, slug, error: "Project name must contain letters (a-z) or numbers." };
   }
-  if (slug.length > PROJECT_NAME_MAX_LENGTH) {
-    return { ok: false, slug, error: `Project name is too long (max ${PROJECT_NAME_MAX_LENGTH} characters after normalisation).` };
+  const max = maxNameLength(prefix);
+  if (slug.length > max) {
+    return { ok: false, slug, error: `Project name is too long (max ${max} characters after normalisation).` };
   }
-  const topic = PROJECT_PREFIX + slug;
+  const topic = prefix + slug;
   if (!isValidTopic(topic)) {
     return { ok: false, slug, error: "Project name produces an invalid GitHub topic." };
   }

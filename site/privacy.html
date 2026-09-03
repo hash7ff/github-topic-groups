@@ -38,7 +38,7 @@
   <h2>What the extension does on GitHub</h2>
   <p>The extension calls only these GitHub REST API endpoints: <code>GET /user</code>, <code>GET /user/repos</code>,
     <code>GET /repos/{owner}/{repo}/topics</code> and <code>PUT /repos/{owner}/{repo}/topics</code>.
-    Writes happen only in response to an action you take (creating, moving, renaming or deleting a project) and replace the repository's topic list while preserving every topic that does not start with <code>project-</code>.
+    Writes happen only in response to an action you take (creating, moving, renaming or deleting a project) and replace the repository's topic list while preserving every topic that does not start with <code>topic-folders-</code>.
     The extension cannot create, delete, or otherwise modify repositories.</p>
   <p>Please note that <strong>GitHub topic names are public</strong>, even on private repositories. The extension warns about this; avoid confidential names.</p>
 
@@ -65,7 +65,7 @@
   <div lang="ja">
     <p>本拡張機能は GitHub（api.github.com および github.com）とのみ通信し、当社（合同会社HASH7FF）はサーバーを運用せず、利用者のデータを一切受け取りません。解析・トラッキング・広告・第三者サービスはありません。</p>
     <p>GitHub の認証情報（貼り付けたトークン、または「Sign in with GitHub」で取得したトークン）はブラウザ内の拡張機能ストレージにのみ保存され、GitHub への認証にのみ使われます。Web ページに渡さず、ログにも出力しません。リポジトリ情報はブラウザのセッションストレージに一時保存され、ブラウザ終了時に破棄されます。</p>
-    <p>本拡張機能が GitHub 上で変更するのはリポジトリの Topics のみで、利用者が明示的に操作したときに限ります。<code>project-</code> で始まらない Topic は必ず保持します。リポジトリの作成・削除はできません。GitHub の Topic 名はプライベートリポジトリでも公開情報であることにご注意ください。</p>
+    <p>本拡張機能が GitHub 上で変更するのはリポジトリの Topics のみで、利用者が明示的に操作したときに限ります。<code>topic-folders-</code> で始まらない Topic は必ず保持します。リポジトリの作成・削除はできません。GitHub の Topic 名はプライベートリポジトリでも公開情報であることにご注意ください。</p>
     <p>設定画面の「Clear token」または拡張機能のアンインストールで保存データはすべて削除されます。お問い合わせ: contact@hash7ff.com</p>
   </div>
 

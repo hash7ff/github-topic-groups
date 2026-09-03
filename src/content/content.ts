@@ -97,7 +97,7 @@ class GroupedView {
     }
     const list = await send<ReposList>({ type: "repos.list", owner: this.ctx.owner, force });
     if (this.disposed) return;
-    this.phase = list.ok ? { kind: "ready", data: list.data, grouped: groupRepos(list.data.repos) } : { kind: "error", error: list.error };
+    this.phase = list.ok ? { kind: "ready", data: list.data, grouped: groupRepos(list.data.repos, this.prefs.prefix) } : { kind: "error", error: list.error };
     this.render();
   }
 
@@ -144,7 +144,7 @@ class GroupedView {
     if (p.kind === "unconfigured") return renderUnconfigured(this.body, this.actions);
     if (p.kind === "error") return renderError(this.body, p.error, this.actions);
     const searching = this.query.trim() !== "";
-    renderGroups(this.body, searching ? filterGrouped(p.grouped, this.query) : p.grouped, this.prefs.collapsed, searching, this.actions);
+    renderGroups(this.body, searching ? filterGrouped(p.grouped, this.query) : p.grouped, this.prefs.collapsed, searching, this.prefs.prefix, this.actions);
   }
 }
 

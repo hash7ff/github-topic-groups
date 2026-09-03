@@ -4,6 +4,7 @@ import { createGitHubApi, GitHubApiError } from "./github-api.ts";
 import * as storage from "./storage.ts";
 import { fail, ok, type AuthStatus, type ReposList, type Request, type Response as MsgResponse } from "../core/messages.ts";
 import type { ApiErrorInfo } from "../core/types.ts";
+import { isValidPrefix, PREFIX_MAX_LENGTH } from "../core/topic.ts";
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const api = createGitHubApi({ getToken: storage.getToken });
@@ -77,6 +78,9 @@ async function handle(req: Request): Promise<MsgResponse<unknown>> {
     case "prefs.get":
       return ok(await storage.getPrefs());
     case "prefs.set":
+      if (req.patch.prefix !== undefined && !isValidPrefix(req.patch.prefix)) {
+        return fail({ kind: "validation", status: 0, message: `Prefix must be lowercase letters, numbers and hyphens, end with a hyphen, and be at most ${PREFIX_MAX_LENGTH} characters (e.g. "topic-folders-").` });
+      }
       return ok(await storage.setPrefs(req.patch));
     default:
       return fail({ kind: "other", status: 0, message: `Unknown message type: ${String((req as { type?: unknown }).type)}` });
