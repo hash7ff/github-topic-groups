@@ -10,9 +10,9 @@ extension settings; the default was chosen because generic prefixes such as `pro
 repositories (`project-management`, `project-euler`, …) and would be misread as folders. Nothing is stored anywhere but GitHub:
 uninstall the extension and your classification is still there, as plain topics.
 
-> **Status: early development.** v0.1 (read-only grouped view) works; moving repositories between
-> projects, renaming and deleting projects, and "Sign in with GitHub" are in progress.
-> Not yet on the Chrome Web Store. Website: https://hash7ff.github.io/github-topic-folders/
+> **Status: v0.1.0 — feature complete for the MVP, not yet on the Chrome Web Store.**
+> Grouped view, Move to…, New project, Rename, Delete, conflict fix and "Sign in with GitHub" all work and were
+> verified against real repositories. Website: https://hash7ff.github.io/github-topic-folders/
 
 ## Principles
 
@@ -24,6 +24,16 @@ uninstall the extension and your classification is still there, as plain topics.
 - **Minimal DOM dependency.** Only the owner (from the URL) and one anchor element are read from GitHub's page;
   repository data comes from the REST API and is rendered as the extension's own DOM.
 
+## Features
+
+- **Grouped view** on your Repositories tab, with a `Grouped | Original` switch, search, collapsible folders and
+  an **Ungrouped** folder for everything else.
+- **Move to…** any repository to another project, to Ungrouped, or into a new project.
+- **New project** from one or many repositories; **Rename** and **Delete** a project (repositories are never deleted).
+- **Conflicts**: a repository carrying several folder topics is shown separately with a **Fix** action.
+- **Sign in with GitHub** through the *Topic Folders* GitHub App (device flow: enter a short code on GitHub).
+  A personal access token still works as an advanced fallback.
+
 ## Install (development build)
 
 ```
@@ -32,19 +42,23 @@ npm run check      # typecheck + unit tests + build + token-isolation check
 ```
 
 Then open `chrome://extensions`, enable *Developer mode*, choose *Load unpacked* and select the `dist/` folder.
-Open the extension's settings to connect your GitHub account (a fine-grained personal access token for now;
-Sign in with GitHub is coming).
+Open the extension's settings and click **Sign in with GitHub**: you get a short code, enter it on
+github.com/login/device and approve the *Topic Folders* app. Then install the app on your repositories when the
+extension asks (choose *All repositories* unless you want to limit it). GitHub requires the app's
+**Administration: Read and write** permission to replace repository topics; the extension uses it for nothing else.
 
-Required token permissions: **Metadata: Read-only** and **Administration: Read and write**
-(GitHub requires Administration write to replace repository topics; the extension uses it for nothing else).
+Advanced: a fine-grained personal access token (Metadata: Read-only, Administration: Read and write) can be
+pasted instead of signing in.
 
 ## Privacy and security
 
-- Your token is stored in the browser profile (`chrome.storage.local`) and is sent only to `api.github.com`.
+- Your credential is stored in the browser profile (`chrome.storage.local`) and is sent only to GitHub.
   It is never given to the GitHub web page, never logged, and the content script that runs on github.com
-  cannot access it (verified at build time).
-- The extension calls exactly four GitHub endpoints: `GET /user`, `GET /user/repos`,
+  cannot access it (verified at build time). There is no client secret anywhere: device-flow tokens are refreshed
+  with the public client ID alone.
+- The extension calls exactly five GitHub REST endpoints: `GET /user`, `GET /user/repos`, `GET /user/installations`,
   `GET /repos/{owner}/{repo}/topics` and `PUT /repos/{owner}/{repo}/topics`. It cannot delete repositories.
+- Every write is journaled locally (last 200, including dry runs) so a mistake can be traced and undone by hand.
 - **Topic names are public, even on private repositories.** Do not use confidential client or project names
   as project topics.
 - Full policy: https://hash7ff.github.io/github-topic-folders/privacy.html
