@@ -15,6 +15,8 @@ export type ViewActions = {
   openSettings(): void;
   moveRepo(repoName: string): void;
   newProject(): void;
+  projectMenu(topic: string): void;
+  fixConflict(repoName: string): void;
 };
 
 export function describeError(error: ApiErrorInfo): string {
@@ -92,7 +94,7 @@ export function repoRow(repo: RepoSummary, extra?: HTMLElement, actions?: ViewAc
   );
 }
 
-function groupSection(key: string, name: string, repos: readonly RepoSummary[], collapsed: boolean, actions: ViewActions, className = ""): HTMLElement {
+function groupSection(key: string, name: string, repos: readonly RepoSummary[], collapsed: boolean, actions: ViewActions, className = "", withMenu = false): HTMLElement {
   const list = h("ul", { className: "gtf-repos", hidden: collapsed }, ...repos.map((r) => repoRow(r, undefined, actions)));
   const header = h(
     "button",
@@ -102,15 +104,26 @@ function groupSection(key: string, name: string, repos: readonly RepoSummary[], 
     h("span", { className: "gtf-count" }, String(repos.length)),
   );
   header.setAttribute("aria-expanded", collapsed ? "false" : "true");
-  return h("section", { className: `gtf-group ${className}`.trim(), dataset: { key } }, header, list);
+  const head = h(
+    "div",
+    { className: "gtf-group-head" },
+    header,
+    withMenu ? h("button", { className: "gtf-btn gtf-group-menu", type: "button", title: "Rename or delete this project", ariaLabel: `Project menu for ${name}`, onClick: () => actions.projectMenu(key) }, "…") : null,
+  );
+  return h("section", { className: `gtf-group ${className}`.trim(), dataset: { key } }, head, list);
 }
 
-function conflictSection(grouped: Grouped, prefix: string): HTMLElement | null {
+function conflictSection(grouped: Grouped, prefix: string, actions: ViewActions): HTMLElement | null {
   if (grouped.conflicts.length === 0) return null;
   const rows = grouped.conflicts.map((c) =>
     repoRow(
       c.repo,
-      h("span", { className: "gtf-conflict-note" }, `Multiple folder topics: ${c.topics.map((t) => displayNameFromTopic(t, prefix)).join(", ")}`),
+      h(
+        "span",
+        { className: "gtf-conflict-cell" },
+        h("span", { className: "gtf-conflict-note" }, `Multiple folder topics: ${c.topics.map((t) => displayNameFromTopic(t, prefix)).join(", ")}`),
+        h("button", { className: "gtf-btn", type: "button", onClick: () => actions.fixConflict(c.repo.name) }, "Fix"),
+      ),
     ),
   );
   const header = h(
@@ -130,9 +143,9 @@ export function renderGroups(body: HTMLElement, grouped: Grouped, collapsed: Rec
     body.append(h("p", { className: "gtf-empty" }, searching ? "No repositories match your search." : "No repositories found."));
     return;
   }
-  const conflicts = conflictSection(grouped, prefix);
+  const conflicts = conflictSection(grouped, prefix, actions);
   if (conflicts) body.append(conflicts);
-  for (const p of grouped.projects as ProjectGroup[]) body.append(groupSection(p.topic, p.name, p.repos, isCollapsed(p.topic), actions));
+  for (const p of grouped.projects as ProjectGroup[]) body.append(groupSection(p.topic, p.name, p.repos, isCollapsed(p.topic), actions, "", true));
   if (grouped.ungrouped.length > 0) body.append(groupSection(UNGROUPED_KEY, "Ungrouped", grouped.ungrouped, isCollapsed(UNGROUPED_KEY), actions, "gtf-ungrouped"));
 }
 

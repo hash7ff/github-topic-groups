@@ -17,3 +17,5 @@ Never reload or touch extensions other than ours; never use CDP ports other than
 - `verify-m45-refresh.cjs <extId>` — forces the access token to look expired and checks that it is refreshed transparently.
 - `verify-m5-writes.cjs <extId>` — write layer against the three gtf-test-* repos only (dry run, Case 2, Case 3, unchanged, wrong prefix, bulk port, journal); restores the Case 1 state. Needs `$GTF_READ_TOKEN` to read topics back.
 - `verify-m6-move-new.cjs` — drives the real UI: Move to… dialog, New project (privacy notice, preselect), bulk create, restore Case 1. Needs `$GTF_READ_TOKEN`.
+- `verify-m7-rename-delete.cjs` — Plan §33 Case 4 (rename) and Case 5 (delete) through the project menu; restores Case 1. Needs `$GTF_READ_TOKEN`.
+- `verify-m8-conflict.cjs <extId>` — seeds two folder topics on gtf-test-firmware, checks the Conflicts section and Fix, restores. Needs `$GTF_READ_TOKEN`.

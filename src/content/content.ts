@@ -11,8 +11,10 @@ import type { ApiErrorInfo } from "../core/types.ts";
 import { buildToolbar, describeError, renderError, renderGroups, renderLoading, renderUnconfigured, setSegmentedMode, type ViewActions } from "./ui/view.ts";
 import { openMoveDialog } from "./ui/moveDialog.ts";
 import { openNewProjectDialog } from "./ui/newProjectDialog.ts";
+import { openDeleteDialog, openProjectMenu, openRenameDialog } from "./ui/projectDialogs.ts";
+import { openFixDialog } from "./ui/fixDialog.ts";
 import { runBulk } from "./bulk.ts";
-import { projectTopics } from "../core/topic.ts";
+import { displayNameFromTopic, projectTopics } from "../core/topic.ts";
 import type { BulkItem, SetProjectResult } from "../core/messages.ts";
 
 const ROOT_ID = "gtf-root";
@@ -69,6 +71,8 @@ class GroupedView {
       openSettings: () => void send({ type: "options.open" }),
       moveRepo: (name) => this.openMove(name),
       newProject: () => this.openNewProject([]),
+      projectMenu: (topic) => this.openProjectMenu(topic),
+      fixConflict: (name) => this.openFix(name),
     };
     const { toolbar, status, seg } = buildToolbar(actions);
     this.status = status;
@@ -150,6 +154,56 @@ class GroupedView {
     });
   }
 
+  // ---- M8: conflict fix (several folder topics on one repository) ----
+  private openFix(repoName: string): void {
+    if (this.phase.kind !== "ready" || this.busy) return;
+    const conflict = this.phase.grouped.conflicts.find((c) => c.repo.name === repoName);
+    if (!conflict) return;
+    openFixDialog({
+      repoName,
+      topics: conflict.topics,
+      prefix: this.prefs.prefix,
+      onFix: (keep) => this.applyWrites([{ owner: this.ctx.owner, repo: repoName, project: keep }], `Fixed ${repoName}: kept ${displayNameFromTopic(keep, this.prefs.prefix)}.`, true),
+    });
+  }
+
+  // ---- M7: rename / delete a project = bulk topic replacement over its repositories ----
+  private openProjectMenu(topic: string): void {
+    if (this.phase.kind !== "ready" || this.busy) return;
+    const project = this.phase.grouped.projects.find((p) => p.topic === topic);
+    if (!project) return;
+    const repos = project.repos.map((r) => r.name);
+    const existing = new Set(this.phase.grouped.projects.map((p) => p.topic));
+    openProjectMenu({
+      name: project.name,
+      onRename: () =>
+        openRenameDialog({
+          name: project.name,
+          topic,
+          count: repos.length,
+          prefix: this.prefs.prefix,
+          existingTopics: existing,
+          onRename: (newTopic, newName) =>
+            this.applyWrites(
+              repos.map((repo) => ({ owner: this.ctx.owner, repo, project: newTopic })),
+              `Renamed ${project.name} to ${newName} (${repos.length} repositor${repos.length === 1 ? "y" : "ies"}).`,
+              true,
+            ),
+        }),
+      onDelete: () =>
+        openDeleteDialog({
+          name: project.name,
+          count: repos.length,
+          onDelete: () =>
+            this.applyWrites(
+              repos.map((repo) => ({ owner: this.ctx.owner, repo, project: null })),
+              `Deleted project ${project.name}: ${repos.length} repositor${repos.length === 1 ? "y" : "ies"} moved to Ungrouped.`,
+              true,
+            ),
+        }),
+    });
+  }
+
   /** Runs writes through the service worker, then reloads from the (patched) cache. UI changes only after GitHub confirmed. */
   private async applyWrites(items: BulkItem[], successMessage: string, rethrow = false): Promise<void> {
     if (this.busy) return;
@@ -178,7 +232,9 @@ class GroupedView {
       } else {
         const first = failed[0]!;
         const detail = failed.map((f) => `${f.repo}: ${describeError(f.error)}`).join(" · ");
-        this.showFlash("error", `${failed.length} of ${items.length} failed. ${detail}`, first.error.installUrl);
+        const failedNames = new Set(failed.map((f) => f.repo));
+        const retryItems = items.filter((i) => failedNames.has(i.repo));
+        this.showFlash("error", `${failed.length} of ${items.length} failed. ${detail}`, first.error.installUrl, () => void this.applyWrites(retryItems, successMessage));
         if (rethrow) throw new Error(`${failed.length} of ${items.length} repositories could not be updated. ${describeError(first.error)}`);
       }
     } finally {
@@ -186,11 +242,12 @@ class GroupedView {
     }
   }
 
-  private showFlash(kind: "ok" | "error", message: string, installUrl?: string): void {
+  private showFlash(kind: "ok" | "error", message: string, installUrl?: string, retry?: () => void): void {
     if (this.flashTimer !== undefined) clearTimeout(this.flashTimer);
     while (this.flash.firstChild) this.flash.removeChild(this.flash.firstChild);
     this.flash.className = `gtf-flash gtf-flash-${kind}`;
     this.flash.append(h("span", {}, message));
+    if (retry) this.flash.append(" ", h("button", { className: "gtf-btn", type: "button", onClick: () => { this.flash.hidden = true; retry(); } }, "Retry failed"));
     if (installUrl) this.flash.append(" ", h("a", { className: "gtf-btn", href: installUrl }, "Install the app on more repositories"));
     this.flash.append(h("button", { className: "gtf-btn gtf-flash-close", type: "button", ariaLabel: "Dismiss", onClick: () => (this.flash.hidden = true) }, "×"));
     this.flash.hidden = false;

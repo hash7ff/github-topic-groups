@@ -16,6 +16,9 @@ a.gtf-btn { text-decoration: none; display: inline-block; }
 
 /* groups */
 .gtf-group { border: 1px solid var(--borderColor-default); border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
+.gtf-group-head { display: flex; align-items: center; background: var(--bgColor-muted); }
+.gtf-group-head .gtf-group-header { flex: 1; }
+.gtf-group-menu { margin-right: 8px; padding: 2px 8px; font-weight: 700; }
 .gtf-group-header { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; font: inherit; font-size: 14px; font-weight: 600; padding: 8px 12px; border: 0; background: var(--bgColor-muted); color: var(--fgColor-default); cursor: pointer; }
 .gtf-group-header-static { cursor: default; }
 .gtf-group-header:not(.gtf-group-header-static):hover { background: var(--bgColor-neutral-muted); }
@@ -86,3 +89,7 @@ a.gtf-btn { text-decoration: none; display: inline-block; }
 .gtf-picker-item-disabled { color: var(--fgColor-muted); cursor: default; }
 .gtf-picker-name { flex: 1; }
 .gtf-muted { color: var(--fgColor-muted); font-size: 12px; }
+.gtf-menu-item-danger { color: var(--fgColor-danger); }
+.gtf-btn-danger { background: var(--bgColor-danger-muted); border-color: var(--fgColor-danger); color: var(--fgColor-danger); }
+.gtf-btn-danger:hover { background: var(--fgColor-danger); color: #fff; }
+.gtf-conflict-cell { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
