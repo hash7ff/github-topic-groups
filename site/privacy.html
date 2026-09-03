@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — GitHub Topic Folders</title>
+  <link rel="icon" href="icon128.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <img src="icon128.png" alt="">
+    <h1>Privacy Policy</h1>
+  </header>
+  <p class="lead">GitHub Topic Folders (Chrome extension) · Effective 2026-09-03</p>
+
+  <p>This policy describes what the GitHub Topic Folders browser extension ("the extension") does with data.
+    The extension is developed and published by <strong>HASH7FF LLC (合同会社HASH7FF)</strong>, Tokyo, Japan
+    ("we"). Contact: <a href="mailto:contact@hash7ff.com">contact@hash7ff.com</a>.</p>
+
+  <h2>Summary</h2>
+  <ul>
+    <li>The extension communicates <strong>only with GitHub</strong> (<code>api.github.com</code> and <code>github.com</code>). We operate no servers and receive no data from you.</li>
+    <li>Your GitHub credentials are stored <strong>only in your browser</strong>.</li>
+    <li>There are <strong>no analytics, no tracking, no advertising</strong> and no third-party services.</li>
+    <li>The extension changes GitHub data in exactly one way: it replaces the <strong>topics</strong> of a repository, and only when you explicitly ask it to.</li>
+  </ul>
+
+  <h2>Data the extension handles</h2>
+  <ul>
+    <li><strong>GitHub credentials.</strong> Either a personal access token you paste into the extension's settings, or an access token obtained when you use "Sign in with GitHub" (GitHub's device authorization flow). The credential is stored in the browser's extension storage (<code>chrome.storage.local</code>) on your device. It is sent to <code>api.github.com</code> (and, for sign-in, <code>github.com</code>) to authenticate requests, and nowhere else. It is never exposed to web pages, never logged, and not accessible to the part of the extension that runs inside GitHub's pages.</li>
+    <li><strong>Repository metadata.</strong> Names, visibility, descriptions, languages, update times and topics of the repositories you own, fetched from the GitHub API. This is cached in the browser's session storage to avoid repeated requests and is discarded when the browser closes.</li>
+    <li><strong>Preferences.</strong> Which folders are collapsed and whether the grouped or original view is shown. Stored locally in the browser.</li>
+  </ul>
+  <p>The extension does not collect or store your name, email address, browsing history, or any data from web pages other than the GitHub repositories page it operates on.</p>
+
+  <h2>What the extension does on GitHub</h2>
+  <p>The extension calls only these GitHub REST API endpoints: <code>GET /user</code>, <code>GET /user/repos</code>,
+    <code>GET /repos/{owner}/{repo}/topics</code> and <code>PUT /repos/{owner}/{repo}/topics</code>.
+    Writes happen only in response to an action you take (creating, moving, renaming or deleting a project) and replace the repository's topic list while preserving every topic that does not start with <code>project-</code>.
+    The extension cannot create, delete, or otherwise modify repositories.</p>
+  <p>Please note that <strong>GitHub topic names are public</strong>, even on private repositories. The extension warns about this; avoid confidential names.</p>
+
+  <h2>Permissions</h2>
+  <ul>
+    <li><code>storage</code> — to keep your credential and preferences in the browser.</li>
+    <li>Access to <code>github.com</code> — to show the grouped view on your repositories page.</li>
+    <li>Access to <code>api.github.com</code> — to read your repositories and update topics.</li>
+  </ul>
+
+  <h2>Data retention and deletion</h2>
+  <p>All data lives in your browser. Use "Clear token" / "Sign out" in the extension's settings to remove the credential, or uninstall the extension to remove everything it stored. You can also revoke the token or the authorization on GitHub at any time (Settings → Developer settings, or Settings → Applications).</p>
+
+  <h2>Children</h2>
+  <p>The extension is not directed at children under 13 and does not knowingly process their data.</p>
+
+  <h2>Changes</h2>
+  <p>We will post any changes to this policy on this page and update the effective date above.</p>
+
+  <h2>Contact</h2>
+  <p>HASH7FF LLC (合同会社HASH7FF) · <a href="mailto:contact@hash7ff.com">contact@hash7ff.com</a> · <a href="https://hash7ff.com">hash7ff.com</a></p>
+
+  <h2 lang="ja">日本語（参考訳）</h2>
+  <div lang="ja">
+    <p>本拡張機能は GitHub（api.github.com および github.com）とのみ通信し、当社（合同会社HASH7FF）はサーバーを運用せず、利用者のデータを一切受け取りません。解析・トラッキング・広告・第三者サービスはありません。</p>
+    <p>GitHub の認証情報（貼り付けたトークン、または「Sign in with GitHub」で取得したトークン）はブラウザ内の拡張機能ストレージにのみ保存され、GitHub への認証にのみ使われます。Web ページに渡さず、ログにも出力しません。リポジトリ情報はブラウザのセッションストレージに一時保存され、ブラウザ終了時に破棄されます。</p>
+    <p>本拡張機能が GitHub 上で変更するのはリポジトリの Topics のみで、利用者が明示的に操作したときに限ります。<code>project-</code> で始まらない Topic は必ず保持します。リポジトリの作成・削除はできません。GitHub の Topic 名はプライベートリポジトリでも公開情報であることにご注意ください。</p>
+    <p>設定画面の「Clear token」または拡張機能のアンインストールで保存データはすべて削除されます。お問い合わせ: contact@hash7ff.com</p>
+  </div>
+
+  <footer>© 2026 <a href="https://hash7ff.com">HASH7FF LLC</a> · <a href="index.html">Home</a></footer>
+</main>
+</body>
+</html>

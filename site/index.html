@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GitHub Topic Folders</title>
+  <meta name="description" content="A Chrome extension that shows your GitHub repositories grouped into folders by project-* topics. Topics are the only source of truth.">
+  <link rel="icon" href="icon128.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <img src="icon128.png" alt="">
+    <h1>GitHub Topic Folders</h1>
+  </header>
+  <p class="lead">See your GitHub repositories as folders, GitLab-group style. Powered by nothing but GitHub Topics.</p>
+
+  <p>
+    <a class="btn primary" href="#install">Install</a>
+    <a class="btn" href="https://github.com/hash7ff/github-topic-folders">Source on GitHub</a>
+  </p>
+
+  <h2>How it works</h2>
+  <p>Give a repository a topic that starts with <code>project-</code>. That is the whole data model.</p>
+  <div class="card"><pre class="demo">Repositories                      Repositories (grouped)
+
+api        project-client-a        ▼ Client A  (3)
+frontend   project-client-a            api
+firmware   project-client-a            frontend
+cool-lib   project-oss                 firmware
+test-tool                          ▶ OSS  (1)
+                                   ▼ Ungrouped  (1)
+                                       test-tool</pre></div>
+  <ul>
+    <li><strong>Topics are the source of truth.</strong> There is no hidden database. Uninstall the extension and your classification is still on GitHub, as plain topics. Use another machine and it is already there.</li>
+    <li><strong>Repositories keep their names.</strong> No <code>client-a-api</code> prefixes; <code>api</code> stays <code>api</code>.</li>
+    <li><strong>Your other topics are never touched.</strong> Moving a repository between projects rewrites only the <code>project-*</code> topic.</li>
+    <li><strong>Always escapable.</strong> A <em>Grouped | Original</em> switch brings back GitHub's own list at any time.</li>
+  </ul>
+
+  <h2 id="install">Install</h2>
+  <p>The extension is in early development and not yet on the Chrome Web Store. Developers can build it from
+    <a href="https://github.com/hash7ff/github-topic-folders">source</a> and load it unpacked. This page will link to the store listing when it is available.</p>
+
+  <h2>Privacy</h2>
+  <p>The extension talks only to GitHub. Your GitHub credentials stay in your browser and are sent to <code>api.github.com</code> only.
+    No analytics, no third-party servers. It reads your repository list and replaces repository topics when you ask it to; it cannot delete repositories.
+    Read the <a href="privacy.html">privacy policy</a>.</p>
+  <p class="muted">Note: GitHub topic names are public even on private repositories. Do not use confidential client or project names as project topics.</p>
+
+  <footer>
+    © 2026 <a href="https://hash7ff.com">HASH7FF LLC</a> · <a href="privacy.html">Privacy policy</a> · <a href="mailto:contact@hash7ff.com">contact@hash7ff.com</a>
+  </footer>
+</main>
+</body>
+</html>

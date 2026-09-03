@@ -180,7 +180,7 @@ build-in-public の観点では、リポを最初から公開（MIT）にする�
 ## 7. 決定ログと残る確認事項
 
 決定（2026-09-03、田中さん回答）:
-1. 配置: `~/share/workspace/github-topic-folders`。push とリモート作成は田中さんがホストで行う。
+1. 配置: `~/share/workspace/github-topic-folders`。リモートは **`hash7ff/github-topic-folders`（公開、MIT）**。GitHub Organization `hash7ff` は 2026-09-03 作成（会社として出す決定）。push とリモート作成は田中さんがホストで行う。サイトは GitHub Pages（`site/` を Actions でデプロイ）。
 2. TypeScript 採用。
 5. 実機確認はホスト Chrome の専用プロファイル（CDP 9224）。田中さんが起動済み。
 6. 個人プロジェクト（context: hash7ff）。Chrome ウェブストアで公開予定 → §2-11 の認証ロードマップとストア公開マイルストーンを追加。
