@@ -51,6 +51,9 @@
         Choose a prefix nobody uses for anything else, because "Delete project" removes topics with this prefix.</p>
       <p id="prefixResult" class="result" hidden></p>
 
+      <label class="check"><input id="dryRun" type="checkbox"> Dry run: plan and log topic changes but never write them to GitHub</label>
+      <p id="dryRunResult" class="result" hidden></p>
+
       <details>
         <summary>Use a personal access token instead of signing in</summary>
         <p class="muted">For people who prefer a token. Fine-grained token with <strong>Metadata: Read-only</strong> and <strong>Administration: Read and write</strong>

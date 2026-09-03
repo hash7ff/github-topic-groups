@@ -21,6 +21,8 @@ const tokenInput = $<HTMLInputElement>("token");
 const tokenResult = $<HTMLParagraphElement>("tokenResult");
 const prefixInput = $<HTMLInputElement>("prefix");
 const prefixResult = $<HTMLParagraphElement>("prefixResult");
+const dryRunInput = $<HTMLInputElement>("dryRun");
+const dryRunResult = $<HTMLParagraphElement>("dryRunResult");
 
 async function send<T>(req: Request): Promise<Response<T>> {
   try {
@@ -168,8 +170,16 @@ $<HTMLButtonElement>("save").addEventListener("click", async () => {
 // ---- advanced: prefix ----
 async function loadPrefs(): Promise<void> {
   const res = await send<Prefs>({ type: "prefs.get" });
-  if (res.ok) prefixInput.value = res.data.prefix;
+  if (res.ok) {
+    prefixInput.value = res.data.prefix;
+    dryRunInput.checked = res.data.dryRun;
+  }
 }
+dryRunInput.addEventListener("change", async () => {
+  const res = await send<Prefs>({ type: "prefs.set", patch: { dryRun: dryRunInput.checked } });
+  if (res.ok) show(dryRunResult, "ok", res.data.dryRun ? "Dry run ON: nothing will be written to GitHub." : "Dry run OFF: changes are written to GitHub.");
+  else show(dryRunResult, "error", describe(res.error));
+});
 $<HTMLButtonElement>("savePrefix").addEventListener("click", async () => {
   const res = await send<Prefs>({ type: "prefs.set", patch: { prefix: prefixInput.value.trim() } });
   if (res.ok) {

@@ -15,3 +15,4 @@ Never reload or touch extensions other than ours; never use CDP ports other than
 - `signin-start.cjs <extId>` / `signin-restart.cjs <extId>` — start (or restart) "Sign in with GitHub" from the options page, print the user code, open GitHub's device page. Approving is a human step.
 - `verify-m45-signin.cjs <extId>` — signed-in state, stored auth shape (kind/expiry only), grouped view under the GitHub App token.
 - `verify-m45-refresh.cjs <extId>` — forces the access token to look expired and checks that it is refreshed transparently.
+- `verify-m5-writes.cjs <extId>` — write layer against the three gtf-test-* repos only (dry run, Case 2, Case 3, unchanged, wrong prefix, bulk port, journal); restores the Case 1 state. Needs `$GTF_READ_TOKEN` to read topics back.

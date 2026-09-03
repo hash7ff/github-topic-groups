@@ -76,6 +76,7 @@ export async function getPrefs(): Promise<Prefs> {
   return {
     viewMode: v.viewMode === "original" ? "original" : "grouped",
     prefix: typeof v.prefix === "string" && isValidPrefix(v.prefix) ? v.prefix : DEFAULT_PREFIX,
+    dryRun: v.dryRun === true,
     collapsed: typeof v.collapsed === "object" && v.collapsed !== null ? v.collapsed : {},
     privacyNoticeDismissed: v.privacyNoticeDismissed === true,
   };
@@ -84,4 +85,30 @@ export async function setPrefs(patch: Partial<Prefs>): Promise<Prefs> {
   const next: Prefs = { ...DEFAULT_PREFS, ...(await getPrefs()), ...patch };
   await chrome.storage.local.set({ [PREFS_KEY]: next });
   return next;
+}
+
+// ---- write journal: what we were about to write, kept for manual recovery (Plan.md §3.4) ----
+import type { JournalEntry } from "../core/messages.ts";
+const JOURNAL_KEY = "gtf.journal";
+const JOURNAL_MAX = 200;
+
+export async function appendJournal(entry: JournalEntry): Promise<void> {
+  const r = await chrome.storage.local.get(JOURNAL_KEY);
+  const list = Array.isArray(r[JOURNAL_KEY]) ? (r[JOURNAL_KEY] as JournalEntry[]) : [];
+  list.push(entry);
+  await chrome.storage.local.set({ [JOURNAL_KEY]: list.slice(-JOURNAL_MAX) });
+}
+export async function listJournal(): Promise<JournalEntry[]> {
+  const r = await chrome.storage.local.get(JOURNAL_KEY);
+  return Array.isArray(r[JOURNAL_KEY]) ? (r[JOURNAL_KEY] as JournalEntry[]) : [];
+}
+
+/** Patch one repository's topics inside every cached list (after a successful PUT). */
+export async function patchCachedTopics(owner: string, repo: string, topics: string[]): Promise<void> {
+  const key = repoCacheKey(owner);
+  const r = await chrome.storage.session.get(key);
+  const cache = r[key] as RepoCache | undefined;
+  if (!cache) return;
+  const repos = cache.repos.map((x) => (x.name.toLowerCase() === repo.toLowerCase() ? { ...x, topics } : x));
+  await chrome.storage.session.set({ [key]: { ...cache, repos } });
 }

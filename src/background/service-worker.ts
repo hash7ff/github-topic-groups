@@ -7,7 +7,8 @@ import * as storage from "./storage.ts";
 import { toAuthRecord } from "../core/auth.ts";
 import { GITHUB_APP_CLIENT_ID, GITHUB_APP_INSTALL_URL, GITHUB_APP_SLUG } from "../core/config.ts";
 import { isValidPrefix, PREFIX_MAX_LENGTH } from "../core/topic.ts";
-import { fail, ok, type AuthStatus, type DevicePoll, type DeviceStart, type InstallationsStatus, type ReposList, type Request, type Response as MsgResponse } from "../core/messages.ts";
+import { BULK_PORT, fail, ok, type AuthStatus, type BulkEvent, type BulkRequest, type DevicePoll, type DeviceStart, type InstallationsStatus, type ReposList, type Request, type Response as MsgResponse, type SetProjectResult } from "../core/messages.ts";
+import { planTopicWrite } from "../core/writePlan.ts";
 import type { ApiErrorInfo } from "../core/types.ts";
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -117,6 +118,61 @@ async function listRepos(owner: string, force: boolean): Promise<MsgResponse<Rep
   return ok({ owner, login, repos, fetchedAt, fromCache: false });
 }
 
+/**
+ * The one write path (Plan.md §3.4): fresh GET -> plan (keeps every non-folder topic) -> journal -> PUT -> patch cache.
+ * Archived repositories are refused up front (GitHub would answer 403 anyway).
+ */
+async function setProject(owner: string, repo: string, project: string | null): Promise<MsgResponse<SetProjectResult>> {
+  const prefs = await storage.getPrefs();
+  const cached = (await storage.getRepoCache(owner))?.repos.find((r) => r.name.toLowerCase() === repo.toLowerCase());
+  if (cached?.archived) return fail({ kind: "validation", status: 0, message: `${repo} is archived (read-only on GitHub). Unarchive it first.` });
+
+  const current = await api.getTopics(owner, repo);
+  const plan = planTopicWrite(current, project, prefs.prefix);
+  if (plan.kind === "error") return fail({ kind: "validation", status: 0, message: plan.message });
+  if (plan.kind === "unchanged") return ok({ changed: false, before: plan.topics, after: plan.topics, dryRun: prefs.dryRun });
+
+  await storage.appendJournal({ ts: Date.now(), owner, repo, before: plan.before, after: plan.after, dryRun: prefs.dryRun });
+  if (prefs.dryRun) return ok({ changed: true, before: plan.before, after: plan.after, dryRun: true });
+
+  const written = await api.putTopics(owner, repo, plan.after);
+  await storage.patchCachedTopics(owner, repo, written);
+  return ok({ changed: true, before: plan.before, after: written, dryRun: false });
+}
+
+const WRITE_SPACING_MS = 1000; // GitHub: wait at least one second between mutative requests, never in parallel
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== BULK_PORT || port.sender?.id !== chrome.runtime.id) return;
+  port.onMessage.addListener(async (message: BulkRequest) => {
+    if (message.type !== "bulk.setProject") return;
+    const post = (e: BulkEvent) => {
+      try {
+        port.postMessage(e);
+      } catch {
+        /* page went away */
+      }
+    };
+    const succeeded: Array<{ repo: string; result: SetProjectResult }> = [];
+    const failed: Array<{ repo: string; error: ApiErrorInfo }> = [];
+    const total = message.items.length;
+    for (let i = 0; i < total; i++) {
+      const item = message.items[i]!;
+      post({ type: "progress", done: i, total, current: item.repo });
+      try {
+        const res = await setProject(item.owner, item.repo, item.project);
+        if (res.ok) succeeded.push({ repo: item.repo, result: res.data });
+        else failed.push({ repo: item.repo, error: res.error });
+      } catch (e) {
+        failed.push({ repo: item.repo, error: toErrorInfo(e) });
+      }
+      if (i < total - 1) await new Promise((r) => setTimeout(r, WRITE_SPACING_MS));
+    }
+    post({ type: "progress", done: total, total, current: "" });
+    post({ type: "result", succeeded, failed });
+  });
+});
+
 async function handle(req: Request): Promise<MsgResponse<unknown>> {
   switch (req.type) {
     case "ping":
@@ -139,6 +195,10 @@ async function handle(req: Request): Promise<MsgResponse<unknown>> {
       return ok(null);
     case "repos.list":
       return listRepos(req.owner, req.force === true);
+    case "repos.setProject":
+      return setProject(req.owner, req.repo, req.project);
+    case "journal.list":
+      return ok(await storage.listJournal());
     case "prefs.get":
       return ok(await storage.getPrefs());
     case "prefs.set":
