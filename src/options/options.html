@@ -8,7 +8,38 @@
 <body>
   <main>
     <h1>GitHub Topic Folders</h1>
-    <p id="status">Settings will be available in the next milestone (M2).</p>
+    <p class="muted">Groups your repositories on <code>github.com/&lt;you&gt;?tab=repositories</code> by <code>project-*</code> topics. Topics on GitHub stay the only source of truth.</p>
+
+    <section>
+      <h2>GitHub token</h2>
+      <p id="status" class="status">Checking…</p>
+      <label for="token">Fine-grained personal access token</label>
+      <div class="row">
+        <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+        <button id="save" type="button">Save &amp; test</button>
+        <button id="clear" type="button" class="secondary">Clear token</button>
+      </div>
+      <p id="result" class="result" hidden></p>
+      <details>
+        <summary>How to create the token</summary>
+        <ol>
+          <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token</a>.</li>
+          <li>Repository access: <strong>All repositories</strong> (or only the repositories you want to organise).</li>
+          <li>Repository permissions: <strong>Metadata: Read-only</strong> (added automatically) and <strong>Administration: Read and write</strong>. Replacing repository topics requires Administration write on GitHub's side; this extension uses it for nothing else.</li>
+          <li>Set an expiration and generate. Paste the token above.</li>
+        </ol>
+      </details>
+    </section>
+
+    <section>
+      <h2>Important</h2>
+      <ul>
+        <li><strong>Topic names are public</strong>, even on private repositories. Do not use confidential client or project names as project topics.</li>
+        <li>The token is stored locally in this browser profile (<code>chrome.storage.local</code>) and is sent only to <code>api.github.com</code>. It is never given to the GitHub web page or written to logs.</li>
+        <li>This extension only reads your repository list and replaces repository topics. It never deletes repositories or changes anything else.</li>
+        <li>Every non-<code>project-*</code> topic is preserved when a repository is moved between projects.</li>
+      </ul>
+    </section>
   </main>
   <script src="options.js"></script>
 </body>

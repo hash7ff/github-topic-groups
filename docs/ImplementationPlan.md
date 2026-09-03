@@ -119,8 +119,8 @@ setProject(owner, repo, project | null):
 |---|---|---|---|
 | M0 ✅ 2026-09-03 | スキャフォールド：リポ作成、package.json、esbuild ビルド、tsconfig、最小 manifest（MV3 / `storage` / host `https://api.github.com/*` / content_scripts `https://github.com/*` / options_ui）、CLAUDE.md（context 宣言・この計画への参照） | `npm run build` で `dist/` 生成、`npm test` が空テストで緑、Chrome で Load unpacked がエラーなし | 手動 |
 | M1 ✅ 2026-09-03 | Hello World 挿入：URL 判定、アンカー探索、`#gtf-root` バッジ挿入、Turbo 再マウント、冪等性 | Overview⇄Repositories を往復しても root が常に 1 つ。ログイン時 DOM がログアウト時と同じか記録 | CDP（9224）でタブ 3 往復・戻る/進む・2 ページ目を自動確認。root=1、console エラーなし、DOM 同一 |
-| M2 | Options ページ（PAT 保存・Test connection・Clear・必要権限と公開性の注意書き）、SW のメッセージルーター、`github-api.ts` の fetch ラッパ（ヘッダ・エラー整形・rate limit ヘッダ読取） | content に "Connected as mutsuyuki" が出る。`scripts/check-token-isolation.sh` が緑 | 手動 + grep スクリプト |
-| M3 | 一覧取得（ページネーション・session キャッシュ）と純粋ロジック（topic.ts / grouping.ts / topicsMerge.ts / search.ts）＋単体テスト | `npm test` 緑（§33 Case 1・3 を単体で再現、日本語名・42 文字超・20 個上限・conflict 検出）。SW ログに実アカウントの件数（100 件超） | `node --test` |
+| M2 ✅ 2026-09-03 | Options ページ（PAT 保存・Test connection・Clear・必要権限と公開性の注意書き）、SW のメッセージルーター、`github-api.ts` の fetch ラッパ（ヘッダ・エラー整形・rate limit ヘッダ読取） | content に "Connected as mutsuyuki" が出る。`scripts/check-token-isolation.sh` が緑 | 手動 + grep スクリプト |
+| M3 🔶 コード完了・実データ検証待ち（テスト用 PAT） | 一覧取得（ページネーション・session キャッシュ）と純粋ロジック（topic.ts / grouping.ts / topicsMerge.ts / search.ts）＋単体テスト | `npm test` 緑（§33 Case 1・3 を単体で再現、日本語名・42 文字超・20 個上限・conflict 検出）。SW ログに実アカウントの件数（100 件超） | `node --test` |
 | M4 | **Grouped View（Read-only, v0.1）**：ツールバー（Grouped/Original・Search・Refresh）、折りたたみ＋状態保存、リポ行（名前リンク・Public/Private・説明・言語・更新時刻）、Ungrouped、Conflict 警告表示、エラーパネル（Retry / Show original）、Primer 変数でテーマ追従 | §33 **Case 1**、**Case 6**（無効トークンで API 失敗 → Original に戻せる）、Dark/Light 切替で崩れない、console エラーなし。`git tag v0.1.0-readonly` | テストリポ 3 つ + 手動 |
 | M5 | 書き込み層：`setProject`、ジャーナル、dry-run、逐次キュー（Port で進捗）、fetch モック単体テスト | dry-run で計画ペイロードが正しい → 実 PUT でテストリポの Topics が期待どおり（`gh api` で確認）。**Case 3 の「python/backend が消えない」**を単体 + 実機で確認 | `node --test` + `gh api /repos/{o}/{r}/topics` |
 | M6 | Move to…（既存 Project / Ungrouped / New project…）、New Project ダイアログ（表示名 → Topic 名プレビュー・バリデーション・初回の公開性警告・リポ 1 件以上選択）、成功後に再取得して再描画 | §33 **Case 2**、**Case 3** | 手動 + `gh api` |
@@ -154,7 +154,9 @@ build-in-public の観点では、リポを最初から公開（MIT）にする�
 - 人間ゲート（各 1 回）: そのプロファイルで `chrome://extensions` → Developer mode → Load unpacked で `dist/` を指定 → GitHub にログイン → Options 画面にテスト用 PAT（§2-12）を貼る。
   ※ブランド版 Chrome は 137 以降 `--load-extension` フラグを無視するので Load unpacked が唯一の方法。読み込んだ unpacked 拡張はプロファイルに残る。
 - 以降はコンテナから playwright-core `connectOverCDP('http://localhost:9224')` で `?tab=repositories` を開き、スクショと `#gtf-root` の存在・グループ見出しを確認する。
-  再ビルド後の拡張リロードは `chrome://extensions` の更新ボタン。CDP 経由での自動リロードは M1 で試す（未検証）。
+  再ビルド後の拡張リロードは **CDP で `chrome://extensions` を開き `chrome.developerPrivate.reload(id)` を呼ぶ**（2026-09-03 動作確認済み。カード上の再読込ボタンは Chrome 152 の shadow DOM に見つからなかった）。
+  拡張 ID は**名前 + `location === "UNPACKED"` で毎回解決する**。`/json/list` の chrome-extension:// ターゲットから推測してはいけない（別のストア拡張を 2 回再読込する事故があった）。
+  スクリプトは `scripts/dev/` に置く（ext-reload.cjs / verify-*.cjs）。
 - 代替案（不採用・記録のみ）: コンテナ内に Playwright の Chrome for Testing を入れて X11 でホスト画面に出す方法も可能（不足 apt パッケージは `libnss3 libnspr4 xvfb` とフォント類のみ）。専用プロファイルの運用が既にあるので今回は使わない。
 
 ## 6. リスクと対策

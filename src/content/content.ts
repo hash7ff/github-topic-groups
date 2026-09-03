@@ -1,7 +1,11 @@
 // Content script: detect the "Repositories" tab of a user profile and mount the extension root.
-// M1 scope: idempotent mount of a placeholder badge that survives GitHub's Turbo navigation.
 // Rules: read as little as possible from GitHub's DOM (owner from URL + one anchor element),
 // never use innerHTML with GitHub-derived strings, never touch the token.
+import { h, clear } from "./ui/h.ts";
+import { send } from "./messaging.ts";
+import { groupRepos } from "../core/grouping.ts";
+import type { AuthStatus, ReposList } from "../core/messages.ts";
+import type { ApiErrorInfo } from "../core/types.ts";
 
 const ROOT_ID = "gtf-root";
 const ANCHOR_ID = "user-repositories-list";
@@ -20,16 +24,54 @@ export function detectRepositoriesPage(href: string): PageContext | null {
   return { owner };
 }
 
-function buildRoot(ctx: PageContext): HTMLElement {
-  const root = document.createElement("div");
-  root.id = ROOT_ID;
-  root.className = "gtf-root";
-  root.dataset["gtfUrl"] = location.href;
+function openSettingsButton(): HTMLElement {
+  return h("button", { className: "gtf-btn", type: "button", onClick: () => void send({ type: "options.open" }) }, "Open settings");
+}
 
-  const badge = document.createElement("div");
-  badge.className = "gtf-badge";
-  badge.textContent = `GitHub Topic Folders is active on this page (owner: ${ctx.owner}).`;
-  root.append(badge);
+function describeError(error: ApiErrorInfo): string {
+  let text = error.message;
+  if (error.kind === "forbidden" && error.acceptedPermissions) text += ` (required permission: ${error.acceptedPermissions})`;
+  if (error.kind === "rate_limited" && error.retryAfterSeconds) text += ` Retry after ${error.retryAfterSeconds}s.`;
+  return text;
+}
+
+async function renderStatus(root: HTMLElement, ctx: PageContext): Promise<void> {
+  const status = root.querySelector<HTMLElement>(".gtf-status");
+  if (!status) return;
+  const set = (...children: Parameters<typeof h>[2][]) => {
+    clear(status);
+    status.append(h("span", {}, ...children));
+  };
+
+  const auth = await send<AuthStatus>({ type: "auth.status" });
+  if (!root.isConnected) return;
+  if (!auth.ok) {
+    set(h("span", { className: "gtf-error" }, describeError(auth.error)), " ", openSettingsButton());
+    return;
+  }
+  if (!auth.data.configured) {
+    set("Set up a GitHub token to enable the grouped view. ", openSettingsButton());
+    return;
+  }
+  set(`Connected as ${auth.data.login ?? "?"}. Loading repositories…`);
+
+  const list = await send<ReposList>({ type: "repos.list", owner: ctx.owner });
+  if (!root.isConnected) return;
+  if (!list.ok) {
+    set(h("span", { className: "gtf-error" }, describeError(list.error)));
+    return;
+  }
+  const grouped = groupRepos(list.data.repos);
+  set(
+    `Connected as ${list.data.login}. Loaded ${list.data.repos.length} repositories: ` +
+      `${grouped.projects.length} projects, ${grouped.ungrouped.length} ungrouped, ${grouped.conflicts.length} conflicts` +
+      (list.data.fromCache ? " (cached)." : "."),
+  );
+}
+
+function buildRoot(ctx: PageContext): HTMLElement {
+  const root = h("div", { id: ROOT_ID, className: "gtf-root", dataset: { gtfUrl: location.href } });
+  root.append(h("div", { className: "gtf-badge" }, h("strong", {}, "GitHub Topic Folders"), " ", h("span", { className: "gtf-status" }, "…")));
   return root;
 }
 
@@ -55,7 +97,9 @@ function mount(): void {
   if (alreadyMounted) return;
 
   existing?.remove();
-  anchor.before(buildRoot(ctx));
+  const root = buildRoot(ctx);
+  anchor.before(root);
+  void renderStatus(root, ctx);
 }
 
 let scheduled: number | undefined;
