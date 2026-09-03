@@ -1,11 +1,14 @@
-// Content script: detect the "Repositories" tab of a user profile and mount the extension root.
+// Content script: detect the "Repositories" tab of a user profile and mount the grouped view.
 // Rules: read as little as possible from GitHub's DOM (owner from URL + one anchor element),
-// never use innerHTML with GitHub-derived strings, never touch the token.
-import { h, clear } from "./ui/h.ts";
+// never use innerHTML with GitHub-derived strings, never touch chrome.storage or the token (service worker only).
+import { h } from "./ui/h.ts";
 import { send } from "./messaging.ts";
-import { groupRepos } from "../core/grouping.ts";
-import type { AuthStatus, ReposList } from "../core/messages.ts";
+import { groupRepos, type Grouped } from "../core/grouping.ts";
+import { filterGrouped } from "../core/search.ts";
+import { relativeTime } from "../core/relativeTime.ts";
+import { DEFAULT_PREFS, type AuthStatus, type Prefs, type ReposList, type ViewMode } from "../core/messages.ts";
 import type { ApiErrorInfo } from "../core/types.ts";
+import { buildToolbar, renderError, renderGroups, renderLoading, renderUnconfigured, setSegmentedMode, type ViewActions } from "./ui/view.ts";
 
 const ROOT_ID = "gtf-root";
 const ANCHOR_ID = "user-repositories-list";
@@ -24,82 +27,154 @@ export function detectRepositoriesPage(href: string): PageContext | null {
   return { owner };
 }
 
-function openSettingsButton(): HTMLElement {
-  return h("button", { className: "gtf-btn", type: "button", onClick: () => void send({ type: "options.open" }) }, "Open settings");
-}
+type Phase =
+  | { kind: "loading" }
+  | { kind: "unconfigured" }
+  | { kind: "error"; error: ApiErrorInfo }
+  | { kind: "ready"; data: ReposList; grouped: Grouped };
 
-function describeError(error: ApiErrorInfo): string {
-  let text = error.message;
-  if (error.kind === "forbidden" && error.acceptedPermissions) text += ` (required permission: ${error.acceptedPermissions})`;
-  if (error.kind === "rate_limited" && error.retryAfterSeconds) text += ` Retry after ${error.retryAfterSeconds}s.`;
-  return text;
-}
+class GroupedView {
+  readonly root: HTMLElement;
+  private readonly body: HTMLElement;
+  private readonly status: HTMLElement;
+  private readonly seg: HTMLElement;
+  private prefs: Prefs = DEFAULT_PREFS;
+  private phase: Phase = { kind: "loading" };
+  private query = "";
+  private disposed = false;
+  private readonly ctx: PageContext;
+  private readonly anchor: HTMLElement;
+  private readonly actions: ViewActions;
 
-async function renderStatus(root: HTMLElement, ctx: PageContext): Promise<void> {
-  const status = root.querySelector<HTMLElement>(".gtf-status");
-  if (!status) return;
-  const set = (...children: Parameters<typeof h>[2][]) => {
-    clear(status);
-    status.append(h("span", {}, ...children));
-  };
-
-  const auth = await send<AuthStatus>({ type: "auth.status" });
-  if (!root.isConnected) return;
-  if (!auth.ok) {
-    set(h("span", { className: "gtf-error" }, describeError(auth.error)), " ", openSettingsButton());
-    return;
+  constructor(ctx: PageContext, anchor: HTMLElement) {
+    this.ctx = ctx;
+    this.anchor = anchor;
+    const actions: ViewActions = {
+      toggleGroup: (key) => this.toggleGroup(key),
+      setMode: (mode) => this.setMode(mode),
+      setQuery: (q) => {
+        this.query = q;
+        this.renderBody();
+      },
+      refresh: () => void this.load(true),
+      retry: () => void this.load(true),
+      openSettings: () => void send({ type: "options.open" }),
+    };
+    const { toolbar, status, seg } = buildToolbar(actions);
+    this.status = status;
+    this.seg = seg;
+    this.body = h("div", { className: "gtf-body" });
+    this.root = h("div", { id: ROOT_ID, className: "gtf-root", dataset: { gtfUrl: location.href } }, toolbar, this.body);
+    this.actions = actions;
   }
-  if (!auth.data.configured) {
-    set("Set up a GitHub token to enable the grouped view. ", openSettingsButton());
-    return;
-  }
-  set(`Connected as ${auth.data.login ?? "?"}. Loading repositories…`);
 
-  const list = await send<ReposList>({ type: "repos.list", owner: ctx.owner });
-  if (!root.isConnected) return;
-  if (!list.ok) {
-    set(h("span", { className: "gtf-error" }, describeError(list.error)));
-    return;
+  async init(): Promise<void> {
+    const prefs = await send<Prefs>({ type: "prefs.get" });
+    if (this.disposed) return;
+    if (prefs.ok) this.prefs = prefs.data;
+    this.applyMode();
+    await this.load(false);
   }
-  const grouped = groupRepos(list.data.repos);
-  set(
-    `Connected as ${list.data.login}. Loaded ${list.data.repos.length} repositories: ` +
-      `${grouped.projects.length} projects, ${grouped.ungrouped.length} ungrouped, ${grouped.conflicts.length} conflicts` +
-      (list.data.fromCache ? " (cached)." : "."),
-  );
+
+  /** Restore GitHub's own list. Called when the root is removed (navigation away). */
+  dispose(): void {
+    this.disposed = true;
+    this.anchor.hidden = false;
+  }
+
+  private async load(force: boolean): Promise<void> {
+    this.phase = { kind: "loading" };
+    this.render();
+    const auth = await send<AuthStatus>({ type: "auth.status" });
+    if (this.disposed) return;
+    if (!auth.ok) {
+      this.phase = { kind: "error", error: auth.error };
+      return this.render();
+    }
+    if (!auth.data.configured) {
+      this.phase = { kind: "unconfigured" };
+      return this.render();
+    }
+    const list = await send<ReposList>({ type: "repos.list", owner: this.ctx.owner, force });
+    if (this.disposed) return;
+    this.phase = list.ok ? { kind: "ready", data: list.data, grouped: groupRepos(list.data.repos) } : { kind: "error", error: list.error };
+    this.render();
+  }
+
+  private toggleGroup(key: string): void {
+    const collapsed = { ...this.prefs.collapsed, [key]: this.prefs.collapsed[key] !== true };
+    this.prefs = { ...this.prefs, collapsed };
+    void send({ type: "prefs.set", patch: { collapsed } });
+    this.renderBody();
+  }
+
+  private setMode(mode: ViewMode): void {
+    this.prefs = { ...this.prefs, viewMode: mode };
+    void send({ type: "prefs.set", patch: { viewMode: mode } });
+    this.applyMode();
+  }
+
+  /** Grouped mode hides GitHub's list ONLY while we have data to show; on error/unconfigured/loading it stays visible (Plan.md §24). */
+  private applyMode(): void {
+    const grouped = this.prefs.viewMode === "grouped";
+    setSegmentedMode(this.seg, this.prefs.viewMode);
+    this.body.hidden = !grouped;
+    this.anchor.hidden = grouped && this.phase.kind === "ready";
+  }
+
+  private render(): void {
+    this.renderStatus();
+    this.renderBody();
+    this.applyMode();
+  }
+
+  private renderStatus(): void {
+    const p = this.phase;
+    this.status.textContent =
+      p.kind === "loading"
+        ? "Loading repositories…"
+        : p.kind === "ready"
+          ? `${p.data.repos.length} repositories · ${p.grouped.projects.length} projects · updated ${relativeTime(new Date(p.data.fetchedAt).toISOString())}`
+          : "";
+  }
+
+  private renderBody(): void {
+    const p = this.phase;
+    if (p.kind === "loading") return renderLoading(this.body);
+    if (p.kind === "unconfigured") return renderUnconfigured(this.body, this.actions);
+    if (p.kind === "error") return renderError(this.body, p.error, this.actions);
+    const searching = this.query.trim() !== "";
+    renderGroups(this.body, searching ? filterGrouped(p.grouped, this.query) : p.grouped, this.prefs.collapsed, searching, this.actions);
+  }
 }
 
-function buildRoot(ctx: PageContext): HTMLElement {
-  const root = h("div", { id: ROOT_ID, className: "gtf-root", dataset: { gtfUrl: location.href } });
-  root.append(h("div", { className: "gtf-badge" }, h("strong", {}, "GitHub Topic Folders"), " ", h("span", { className: "gtf-status" }, "…")));
-  return root;
-}
+const views = new WeakMap<Element, GroupedView>();
 
 function mount(): void {
   const ctx = detectRepositoriesPage(location.href);
   const existing = document.getElementById(ROOT_ID);
-
-  if (!ctx) {
-    existing?.remove();
-    return;
-  }
   const anchor = document.getElementById(ANCHOR_ID);
-  if (!anchor) {
-    // GitHub DOM changed or the list is not rendered yet: do nothing, the original UI stays untouched.
-    existing?.remove();
+
+  const teardown = () => {
+    if (!existing) return;
+    views.get(existing)?.dispose();
+    existing.remove();
+  };
+
+  if (!ctx || !anchor) {
+    // Not a repositories page, or GitHub's DOM changed: leave the original UI untouched.
+    teardown();
     return;
   }
   const alreadyMounted =
-    existing !== null &&
-    existing.isConnected &&
-    existing.dataset["gtfUrl"] === location.href &&
-    anchor.previousElementSibling === existing;
+    existing !== null && existing.isConnected && existing.dataset["gtfUrl"] === location.href && anchor.previousElementSibling === existing;
   if (alreadyMounted) return;
 
-  existing?.remove();
-  const root = buildRoot(ctx);
-  anchor.before(root);
-  void renderStatus(root, ctx);
+  teardown();
+  const view = new GroupedView(ctx, anchor);
+  views.set(view.root, view);
+  anchor.before(view.root);
+  void view.init();
 }
 
 let scheduled: number | undefined;

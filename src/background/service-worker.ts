@@ -74,6 +74,10 @@ async function handle(req: Request): Promise<MsgResponse<unknown>> {
       return ok(null);
     case "repos.list":
       return listRepos(req.owner, req.force === true);
+    case "prefs.get":
+      return ok(await storage.getPrefs());
+    case "prefs.set":
+      return ok(await storage.setPrefs(req.patch));
     default:
       return fail({ kind: "other", status: 0, message: `Unknown message type: ${String((req as { type?: unknown }).type)}` });
   }

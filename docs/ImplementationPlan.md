@@ -44,10 +44,12 @@
 8. **リポの並び**: グループ内は名前順。プロジェクトは表示名順、Ungrouped は最後。件数は MVP から表示（コストほぼゼロ）。
 9. **言語カラーの丸**: MVP では言語名テキストのみ（linguist の色表は API に無いため）。Phase 2 で色表を同梱。
 10. **UI の言語**: 英語（GitHub UI に合わせる。Plan.md の文言例も英語）。
-11. **認証のロードマップ**（ストア公開が前提になったため追加）: v0.1 は PAT 手入力。ストア公開前に **GitHub App の Device Flow**（client secret も backend も不要、Service Worker から完結）を追加し、PAT は上級者向けに残す。
-    `chrome.identity.launchWebAuthFlow` + OAuth App は code 交換に client secret が要るので単体拡張では不可。※実装時に GitHub 側仕様を再確認。
-12. **トークンの扱い**: 拡張が使う PAT は田中さんが自分の Chrome の Options 画面に貼るもので、エージェントには渡さない。
-    検証用プロファイル（§5.3）には **テストリポ 3 つだけに限定した PAT**（Only select repositories）を田中さんが貼る。漏れても影響範囲はテストリポのみ。
+11. **認証は「Sign in with GitHub」（GitHub App の Device Flow）に切り替える**（決定 2026-09-03。田中さん: 「ユーザーに PAT は厳しい」）。
+    client secret も backend も不要で Service Worker から完結。ユーザーはボタン → GitHub のページで 8 文字コード入力 → 承認、の 3 手。PAT 入力は上級者向けの予備として残す。
+    順序: M4（Grouped View、読み取り専用トークンで検証）→ **M4.5 認証切替** → M5 以降の書き込みは GitHub App のトークンで検証（App をテストリポ 3 つだけにインストール＝影響範囲の限定）。
+    `chrome.identity.launchWebAuthFlow` + OAuth App は code 交換に client secret が要るので単体拡張では不可。※実装時に GitHub 側仕様（Device Flow の有効化、user-to-server token の期限と refresh、`GET /user/installations`）を再確認。
+12. **トークンの扱い**: 本番トークンは田中さん自身のブラウザにしか存在せず、エージェントには渡さない。
+    検証用プロファイル（9224）には、読み取り専用マイルストーン（M3/M4）は `.env` の読み取り専用トークン（実リポを壊す余地なし）を使い、書き込み系は M4.5 の Sign in で得たトークン（テストリポ限定）を使う。**PAT を新規に作る作業は発生させない**。
 
 ## 3. アーキテクチャ
 
@@ -120,8 +122,9 @@ setProject(owner, repo, project | null):
 | M0 ✅ 2026-09-03 | スキャフォールド：リポ作成、package.json、esbuild ビルド、tsconfig、最小 manifest（MV3 / `storage` / host `https://api.github.com/*` / content_scripts `https://github.com/*` / options_ui）、CLAUDE.md（context 宣言・この計画への参照） | `npm run build` で `dist/` 生成、`npm test` が空テストで緑、Chrome で Load unpacked がエラーなし | 手動 |
 | M1 ✅ 2026-09-03 | Hello World 挿入：URL 判定、アンカー探索、`#gtf-root` バッジ挿入、Turbo 再マウント、冪等性 | Overview⇄Repositories を往復しても root が常に 1 つ。ログイン時 DOM がログアウト時と同じか記録 | CDP（9224）でタブ 3 往復・戻る/進む・2 ページ目を自動確認。root=1、console エラーなし、DOM 同一 |
 | M2 ✅ 2026-09-03 | Options ページ（PAT 保存・Test connection・Clear・必要権限と公開性の注意書き）、SW のメッセージルーター、`github-api.ts` の fetch ラッパ（ヘッダ・エラー整形・rate limit ヘッダ読取） | content に "Connected as mutsuyuki" が出る。`scripts/check-token-isolation.sh` が緑 | 手動 + grep スクリプト |
-| M3 🔶 コード完了・実データ検証待ち（テスト用 PAT） | 一覧取得（ページネーション・session キャッシュ）と純粋ロジック（topic.ts / grouping.ts / topicsMerge.ts / search.ts）＋単体テスト | `npm test` 緑（§33 Case 1・3 を単体で再現、日本語名・42 文字超・20 個上限・conflict 検出）。SW ログに実アカウントの件数（100 件超） | `node --test` |
-| M4 | **Grouped View（Read-only, v0.1）**：ツールバー（Grouped/Original・Search・Refresh）、折りたたみ＋状態保存、リポ行（名前リンク・Public/Private・説明・言語・更新時刻）、Ungrouped、Conflict 警告表示、エラーパネル（Retry / Show original）、Primer 変数でテーマ追従 | §33 **Case 1**、**Case 6**（無効トークンで API 失敗 → Original に戻せる）、Dark/Light 切替で崩れない、console エラーなし。`git tag v0.1.0-readonly` | テストリポ 3 つ + 手動 |
+| M3 ✅ 2026-09-03（実データ 109 リポ・2 ページ・キャッシュ動作） | 一覧取得（ページネーション・session キャッシュ）と純粋ロジック（topic.ts / grouping.ts / topicsMerge.ts / search.ts）＋単体テスト | `npm test` 緑（§33 Case 1・3 を単体で再現、日本語名・42 文字超・20 個上限・conflict 検出）。SW ログに実アカウントの件数（100 件超） | `node --test` |
+| M4 ✅ 2026-09-03（Case 1・Case 6 合格、`v0.1.0-readonly`） | **Grouped View（Read-only, v0.1）**：ツールバー（Grouped/Original・Search・Refresh）、折りたたみ＋状態保存、リポ行（名前リンク・Public/Private・説明・言語・更新時刻）、Ungrouped、Conflict 警告表示、エラーパネル（Retry / Show original）、Primer 変数でテーマ追従 | §33 **Case 1**、**Case 6**（無効トークンで API 失敗 → Original に戻せる）、Dark/Light 切替で崩れない、console エラーなし。`git tag v0.1.0-readonly` | テストリポ 3 つ + 手動 |
+| M4.5 | **Sign in with GitHub**: GitHub App（田中さんが登録・Device Flow 有効化・公開）、Options/ツールバーに Sign in ボタン、`login/device/code` → コード表示＋GitHub を開く → `login/oauth/access_token` をポーリング（`interval` 尊重、`slow_down`/`expired_token`/`access_denied` 処理）、token+refresh_token を storage.local に保存、期限切れ時に refresh、`GET /user/installations` で未インストールなら「Install on your repositories」導線。PAT 入力は詳細設定に格下げ | 9224 で Sign in → `Signed in as mutsuyuki`。App をテストリポ 3 つだけにインストール → 一覧に 3 つだけ出る（インストール範囲外は 404 になる想定を確認）。ブラウザ再起動後も保持、8h 経過後の refresh 動作 | 手動 + CDP |
 | M5 | 書き込み層：`setProject`、ジャーナル、dry-run、逐次キュー（Port で進捗）、fetch モック単体テスト | dry-run で計画ペイロードが正しい → 実 PUT でテストリポの Topics が期待どおり（`gh api` で確認）。**Case 3 の「python/backend が消えない」**を単体 + 実機で確認 | `node --test` + `gh api /repos/{o}/{r}/topics` |
 | M6 | Move to…（既存 Project / Ungrouped / New project…）、New Project ダイアログ（表示名 → Topic 名プレビュー・バリデーション・初回の公開性警告・リポ 1 件以上選択）、成功後に再取得して再描画 | §33 **Case 2**、**Case 3** | 手動 + `gh api` |
 | M7 | Project Rename / Delete（確認ダイアログに件数、逐次実行、進捗、成功/失敗一覧、失敗分 Retry） | §33 **Case 4**、**Case 5**。途中失敗時に UI が嘘をつかない（成功分だけ反映） | 手動（失敗はネットワーク切断で再現） |
@@ -149,6 +152,7 @@ build-in-public の観点では、リポを最初から公開（MIT）にする�
 - 実アカウントの本番リポには v0.1 完了まで書き込まない。
 
 ### 5.3 実機確認（ホスト Chrome、CDP 9224）— 2026-09-03 接続確認済み
+- ホスト側の `share` ディレクトリ: `/home/mutsuyuki/@sync/@study/SelfProject/github-topic-folder/`（Load unpacked の対象は `.../workspace/github-topic-folders/dist`）。
 - コンテナには Chrome が無く、コンテナからホストのプロセスは起動できない。**この拡張専用の Chrome プロファイルを田中さんがホスト側で起動**（CDP ポート 9224。9222/9223 は他プロジェクト用なので触らない）。
   接続確認: Chrome 152 / CDP 1.3。Chrome が再起動された時は田中さんが再度起動する。
 - 人間ゲート（各 1 回）: そのプロファイルで `chrome://extensions` → Developer mode → Load unpacked で `dist/` を指定 → GitHub にログイン → Options 画面にテスト用 PAT（§2-12）を貼る。

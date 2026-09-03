@@ -1,24 +1,49 @@
 /* Only Primer CSS variables so the UI follows GitHub's light/dark theme (variable names verified 2026-09-03). */
-.gtf-root {
-  margin: 16px 0;
-  color: var(--fgColor-default);
-  font-size: 14px;
-}
-.gtf-badge {
-  border: 1px solid var(--borderColor-default);
-  background: var(--bgColor-muted);
-  border-radius: 6px;
-  padding: 8px 12px;
-}
-.gtf-error { color: var(--fgColor-danger); }
-.gtf-btn {
-  font: inherit;
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--borderColor-default);
-  background: var(--button-default-bgColor-rest, var(--bgColor-default));
-  color: var(--fgColor-default);
-  cursor: pointer;
-}
+.gtf-root { margin: 0 0 16px; color: var(--fgColor-default); font-size: 14px; }
+
+/* toolbar */
+.gtf-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
+.gtf-segmented { display: inline-flex; border: 1px solid var(--borderColor-default); border-radius: 6px; overflow: hidden; }
+.gtf-seg-btn { font: inherit; font-size: 12px; font-weight: 500; padding: 4px 10px; border: 0; background: var(--bgColor-default); color: var(--fgColor-muted); cursor: pointer; }
+.gtf-seg-btn + .gtf-seg-btn { border-left: 1px solid var(--borderColor-default); }
+.gtf-seg-btn[aria-pressed="true"] { background: var(--bgColor-neutral-muted); color: var(--fgColor-default); font-weight: 600; }
+.gtf-search { flex: 1 1 200px; min-width: 160px; font: inherit; font-size: 14px; padding: 4px 10px; border: 1px solid var(--borderColor-default); border-radius: 6px; background: var(--bgColor-default); color: var(--fgColor-default); }
+.gtf-search:focus { outline: 2px solid var(--fgColor-accent); outline-offset: -1px; }
+.gtf-toolbar-status { color: var(--fgColor-muted); font-size: 12px; margin-left: auto; }
+.gtf-btn { font: inherit; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--borderColor-default); background: var(--button-default-bgColor-rest, var(--bgColor-default)); color: var(--fgColor-default); cursor: pointer; }
 .gtf-btn:hover { background: var(--bgColor-neutral-muted); }
+
+/* groups */
+.gtf-group { border: 1px solid var(--borderColor-default); border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
+.gtf-group-header { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; font: inherit; font-size: 14px; font-weight: 600; padding: 8px 12px; border: 0; background: var(--bgColor-muted); color: var(--fgColor-default); cursor: pointer; }
+.gtf-group-header-static { cursor: default; }
+.gtf-group-header:not(.gtf-group-header-static):hover { background: var(--bgColor-neutral-muted); }
+.gtf-caret { display: inline-block; width: 12px; color: var(--fgColor-muted); font-size: 12px; }
+.gtf-caret::before { content: "▾"; }
+.gtf-group-header[aria-expanded="false"] .gtf-caret::before { content: "▸"; }
+.gtf-count { font-size: 12px; font-weight: 500; padding: 0 7px; border-radius: 2em; background: var(--bgColor-neutral-muted); color: var(--fgColor-muted); }
+.gtf-ungrouped .gtf-group-name { color: var(--fgColor-muted); }
+.gtf-conflicts { border-color: var(--fgColor-attention); }
+.gtf-conflicts .gtf-group-name { color: var(--fgColor-attention); }
+.gtf-conflict-note { color: var(--fgColor-attention); font-size: 12px; }
+
+/* repository rows */
+.gtf-repos { list-style: none; margin: 0; padding: 0; }
+.gtf-repo { display: flex; justify-content: space-between; gap: 12px; padding: 12px; border-top: 1px solid var(--borderColor-muted); }
+.gtf-repo-main { min-width: 0; }
+.gtf-repo-title { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.gtf-repo-name { font-weight: 600; font-size: 15px; color: var(--fgColor-accent); text-decoration: none; }
+.gtf-repo-name:hover { text-decoration: underline; }
+.gtf-label { font-size: 11px; font-weight: 500; line-height: 16px; padding: 0 6px; border: 1px solid var(--borderColor-default); border-radius: 2em; color: var(--fgColor-muted); }
+.gtf-label-attention { color: var(--fgColor-attention); border-color: var(--fgColor-attention); }
+.gtf-repo-desc { margin: 4px 0 0; color: var(--fgColor-muted); font-size: 13px; }
+.gtf-repo-meta { display: flex; gap: 12px; margin-top: 6px; color: var(--fgColor-muted); font-size: 12px; }
+.gtf-repo-actions { flex: 0 0 auto; display: flex; align-items: flex-start; }
+
+/* states */
+.gtf-loading, .gtf-empty { color: var(--fgColor-muted); padding: 8px 0; }
+.gtf-error { color: var(--fgColor-danger); }
+.gtf-error-panel, .gtf-notice { border: 1px solid var(--borderColor-default); border-radius: 6px; padding: 12px; background: var(--bgColor-muted); }
+.gtf-error-panel { border-color: var(--fgColor-danger); }
+.gtf-error-panel p { margin: 0 0 8px; }
+.gtf-actions { display: flex; gap: 8px; flex-wrap: wrap; }

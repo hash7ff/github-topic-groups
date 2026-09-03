@@ -41,3 +41,22 @@ export async function setRepoCache(owner: string, cache: RepoCache): Promise<voi
 export async function clearSession(): Promise<void> {
   await chrome.storage.session.clear();
 }
+
+// ---- UI preferences (not secrets, not classification data) ----
+import { DEFAULT_PREFS, type Prefs } from "../core/messages.ts";
+const PREFS_KEY = "gtf.prefs";
+
+export async function getPrefs(): Promise<Prefs> {
+  const r = await chrome.storage.local.get(PREFS_KEY);
+  const v = (r[PREFS_KEY] ?? {}) as Partial<Prefs>;
+  return {
+    viewMode: v.viewMode === "original" ? "original" : "grouped",
+    collapsed: typeof v.collapsed === "object" && v.collapsed !== null ? v.collapsed : {},
+    privacyNoticeDismissed: v.privacyNoticeDismissed === true,
+  };
+}
+export async function setPrefs(patch: Partial<Prefs>): Promise<Prefs> {
+  const next: Prefs = { ...DEFAULT_PREFS, ...(await getPrefs()), ...patch };
+  await chrome.storage.local.set({ [PREFS_KEY]: next });
+  return next;
+}
