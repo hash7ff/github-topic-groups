@@ -1,0 +1,12 @@
+/* Only Primer CSS variables so the UI follows GitHub's light/dark theme (variable names verified 2026-09-03). */
+.gtf-root {
+  margin: 16px 0;
+  color: var(--fgColor-default);
+  font-size: 14px;
+}
+.gtf-badge {
+  border: 1px solid var(--borderColor-default);
+  background: var(--bgColor-muted);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
