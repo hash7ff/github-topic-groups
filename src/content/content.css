@@ -12,6 +12,7 @@
 .gtf-toolbar-status { color: var(--fgColor-muted); font-size: 12px; margin-left: auto; }
 .gtf-btn { font: inherit; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--borderColor-default); background: var(--button-default-bgColor-rest, var(--bgColor-default)); color: var(--fgColor-default); cursor: pointer; }
 .gtf-btn:hover { background: var(--bgColor-neutral-muted); }
+a.gtf-btn { text-decoration: none; display: inline-block; }
 
 /* groups */
 .gtf-group { border: 1px solid var(--borderColor-default); border-radius: 6px; margin-bottom: 12px; overflow: hidden; }

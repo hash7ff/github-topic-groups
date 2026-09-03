@@ -11,28 +11,36 @@
     <p class="muted">Groups your repositories on <code>github.com/&lt;you&gt;?tab=repositories</code> by <code>topic-folders-*</code> topics. Topics on GitHub stay the only source of truth.</p>
 
     <section>
-      <h2>GitHub token</h2>
+      <h2>GitHub account</h2>
       <p id="status" class="status">Checking…</p>
-      <label for="token">Fine-grained personal access token</label>
-      <div class="row">
-        <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
-        <button id="save" type="button">Save &amp; test</button>
-        <button id="clear" type="button" class="secondary">Clear token</button>
+
+      <div id="signedOut" hidden>
+        <p>Connect the <strong>Topic Folders</strong> GitHub App. You will get a short code to enter on GitHub; no token to create or paste.</p>
+        <button id="signIn" type="button">Sign in with GitHub</button>
+      </div>
+
+      <div id="flow" class="card" hidden>
+        <p><strong>1.</strong> Your code: <code id="userCode" class="user-code"></code> <button id="copyCode" type="button" class="secondary small">Copy</button></p>
+        <p><strong>2.</strong> <a id="openGitHub" href="https://github.com/login/device" target="_blank" rel="noreferrer">Open github.com/login/device</a> and enter the code, then approve <em>Topic Folders</em>.</p>
+        <p id="flowStatus" class="muted">Waiting for you to approve on GitHub…</p>
+        <button id="cancelFlow" type="button" class="secondary small">Cancel</button>
+      </div>
+
+      <div id="signedIn" hidden>
+        <p id="installStatus" class="muted"></p>
+        <div id="installHint" class="card" hidden>
+          <p>The app is not installed on your repositories yet, so it cannot see them. Install it (choose <em>All repositories</em>, or only the ones you want to organise), then come back and click Refresh.</p>
+          <a id="installLink" class="button-link" href="https://github.com/apps/topic-folders/installations/new" target="_blank" rel="noreferrer">Install on your repositories</a>
+          <button id="recheck" type="button" class="secondary">Refresh</button>
+        </div>
+        <button id="signOut" type="button" class="secondary">Sign out</button>
       </div>
       <p id="result" class="result" hidden></p>
-      <details>
-        <summary>How to create the token</summary>
-        <ol>
-          <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token</a>.</li>
-          <li>Repository access: <strong>All repositories</strong> (or only the repositories you want to organise).</li>
-          <li>Repository permissions: <strong>Metadata: Read-only</strong> (added automatically) and <strong>Administration: Read and write</strong>. Replacing repository topics requires Administration write on GitHub's side; this extension uses it for nothing else.</li>
-          <li>Set an expiration and generate. Paste the token above.</li>
-        </ol>
-      </details>
     </section>
 
     <section>
       <h2>Advanced</h2>
+
       <label for="prefix">Folder topic prefix</label>
       <div class="row">
         <input id="prefix" type="text" autocomplete="off" spellcheck="false" placeholder="topic-folders-">
@@ -42,13 +50,24 @@
         Lowercase letters, numbers and hyphens, ending with a hyphen. This setting lives in this browser only: repositories tagged with a different prefix are not recognised as folders until re-tagged.
         Choose a prefix nobody uses for anything else, because "Delete project" removes topics with this prefix.</p>
       <p id="prefixResult" class="result" hidden></p>
+
+      <details>
+        <summary>Use a personal access token instead of signing in</summary>
+        <p class="muted">For people who prefer a token. Fine-grained token with <strong>Metadata: Read-only</strong> and <strong>Administration: Read and write</strong>
+          (<a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">create one</a>). Saving a token replaces the GitHub sign-in.</p>
+        <div class="row">
+          <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+          <button id="save" type="button" class="secondary">Save &amp; test token</button>
+        </div>
+        <p id="tokenResult" class="result" hidden></p>
+      </details>
     </section>
 
     <section>
       <h2>Important</h2>
       <ul>
         <li><strong>Topic names are public</strong>, even on private repositories. Do not use confidential client or project names as project topics.</li>
-        <li>The token is stored locally in this browser profile (<code>chrome.storage.local</code>) and is sent only to <code>api.github.com</code>. It is never given to the GitHub web page or written to logs.</li>
+        <li>Your GitHub credential is stored locally in this browser profile (<code>chrome.storage.local</code>) and is sent only to GitHub. It is never given to the GitHub web page or written to logs.</li>
         <li>This extension only reads your repository list and replaces repository topics. It never deletes repositories or changes anything else.</li>
         <li>Every topic outside the folder prefix is preserved when a repository is moved between projects.</li>
       </ul>

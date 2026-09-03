@@ -1,4 +1,4 @@
-import type { AuthStatus, Prefs, Request, Response } from "../core/messages.ts";
+import type { AuthStatus, DevicePoll, DeviceStart, InstallationsStatus, Prefs, Request, Response } from "../core/messages.ts";
 import type { ApiErrorInfo } from "../core/types.ts";
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -8,11 +8,18 @@ const $ = <T extends HTMLElement>(id: string): T => {
 };
 const statusEl = $<HTMLParagraphElement>("status");
 const resultEl = $<HTMLParagraphElement>("result");
+const signedOut = $<HTMLDivElement>("signedOut");
+const signedIn = $<HTMLDivElement>("signedIn");
+const flowEl = $<HTMLDivElement>("flow");
+const userCodeEl = $<HTMLElement>("userCode");
+const openGitHub = $<HTMLAnchorElement>("openGitHub");
+const flowStatus = $<HTMLParagraphElement>("flowStatus");
+const installStatus = $<HTMLParagraphElement>("installStatus");
+const installHint = $<HTMLDivElement>("installHint");
+const installLink = $<HTMLAnchorElement>("installLink");
 const tokenInput = $<HTMLInputElement>("token");
-const saveBtn = $<HTMLButtonElement>("save");
-const clearBtn = $<HTMLButtonElement>("clear");
+const tokenResult = $<HTMLParagraphElement>("tokenResult");
 const prefixInput = $<HTMLInputElement>("prefix");
-const savePrefixBtn = $<HTMLButtonElement>("savePrefix");
 const prefixResult = $<HTMLParagraphElement>("prefixResult");
 
 async function send<T>(req: Request): Promise<Response<T>> {
@@ -30,69 +37,146 @@ function describe(error: ApiErrorInfo): string {
   return text;
 }
 
-function showResult(kind: "ok" | "error", text: string): void {
-  resultEl.hidden = false;
-  resultEl.className = `result ${kind}`;
-  resultEl.textContent = text;
+function show(el: HTMLElement, kind: "ok" | "error", text: string): void {
+  el.hidden = false;
+  el.className = `result ${kind}`;
+  el.textContent = text;
 }
 
-function showStatus(status: AuthStatus): void {
-  statusEl.textContent = status.configured ? `Token saved. Connected to GitHub as ${status.login ?? "?"}.` : "No token saved yet.";
+// ---- account state ----
+let activeFlow: { flowId: string; timer: number | undefined; cancelled: boolean } | null = null;
+
+function render(status: AuthStatus | null, error?: ApiErrorInfo): void {
+  const inFlow = activeFlow !== null;
+  signedOut.hidden = inFlow || (status?.configured ?? false);
+  signedIn.hidden = inFlow || !(status?.configured ?? false);
+  flowEl.hidden = !inFlow;
+  if (error) statusEl.textContent = `Signed in, but GitHub rejected the credential: ${describe(error)}`;
+  else if (!status || !status.configured) statusEl.textContent = "Not signed in.";
+  else statusEl.textContent = `Signed in as ${status.login ?? "?"} ${status.kind === "github-app" ? "via the Topic Folders GitHub App." : "with a personal access token."}`;
+}
+
+async function refreshInstallations(): Promise<void> {
+  const res = await send<InstallationsStatus>({ type: "auth.installations" });
+  if (!res.ok) {
+    installStatus.textContent = "";
+    installHint.hidden = true;
+    return;
+  }
+  installLink.href = res.data.installUrl;
+  if (res.data.installed) {
+    installHint.hidden = true;
+    installStatus.textContent =
+      res.data.count === 0
+        ? "" // PAT: installations do not apply
+        : `App installed (${res.data.count} account${res.data.count === 1 ? "" : "s"}, repositories: ${res.data.repositorySelection ?? "?"}).`;
+  } else {
+    installStatus.textContent = "";
+    installHint.hidden = false;
+  }
 }
 
 async function refresh(): Promise<void> {
   const res = await send<AuthStatus>({ type: "auth.status" });
-  if (res.ok) showStatus(res.data);
-  else statusEl.textContent = `Token saved, but GitHub rejected it: ${describe(res.error)}`;
+  if (res.ok) {
+    render(res.data);
+    if (res.data.configured) await refreshInstallations();
+  } else {
+    render({ configured: true, login: null, kind: null }, res.error);
+  }
 }
 
-saveBtn.addEventListener("click", async () => {
-  const token = tokenInput.value.trim();
-  if (!token) {
-    showResult("error", "Paste a token first.");
+// ---- device flow (the page owns the timing; the worker does one poll per message) ----
+function stopFlow(): void {
+  if (activeFlow?.timer !== undefined) clearTimeout(activeFlow.timer);
+  if (activeFlow) activeFlow.cancelled = true;
+  activeFlow = null;
+}
+
+async function pollLoop(flowId: string, interval: number): Promise<void> {
+  const flow = activeFlow;
+  if (!flow || flow.flowId !== flowId || flow.cancelled) return;
+  const res = await send<DevicePoll>({ type: "auth.devicePoll", flowId });
+  if (!activeFlow || activeFlow.flowId !== flowId || activeFlow.cancelled) return;
+  if (!res.ok) {
+    stopFlow();
+    show(resultEl, "error", `Sign-in failed: ${describe(res.error)}`);
+    await refresh();
     return;
   }
-  saveBtn.disabled = true;
+  if (res.data.done) {
+    stopFlow();
+    show(resultEl, "ok", `Signed in as ${res.data.login}.`);
+    await refresh();
+    return;
+  }
+  activeFlow.timer = window.setTimeout(() => void pollLoop(flowId, res.data.done ? interval : res.data.interval), (res.data.done ? interval : res.data.interval) * 1000);
+}
+
+$<HTMLButtonElement>("signIn").addEventListener("click", async () => {
+  resultEl.hidden = true;
+  const res = await send<DeviceStart>({ type: "auth.deviceStart" });
+  if (!res.ok) {
+    show(resultEl, "error", `Could not start sign-in: ${describe(res.error)}`);
+    return;
+  }
+  activeFlow = { flowId: res.data.flowId, timer: undefined, cancelled: false };
+  userCodeEl.textContent = res.data.userCode;
+  openGitHub.href = res.data.verificationUri;
+  flowStatus.textContent = `Waiting for you to approve on GitHub… (code valid for ${Math.round(res.data.expiresIn / 60)} minutes)`;
+  render(null);
+  activeFlow.timer = window.setTimeout(() => void pollLoop(res.data.flowId, res.data.interval), res.data.interval * 1000);
+});
+
+$<HTMLButtonElement>("copyCode").addEventListener("click", async () => {
   try {
-    const res = await send<AuthStatus>({ type: "auth.setToken", token });
-    if (res.ok) {
-      tokenInput.value = "";
-      showResult("ok", `Token verified and saved. Signed in as ${res.data.login ?? "?"}.`);
-      showStatus(res.data);
-    } else {
-      showResult("error", `Token was NOT saved: ${describe(res.error)}`);
-    }
-  } finally {
-    saveBtn.disabled = false;
+    await navigator.clipboard.writeText(userCodeEl.textContent ?? "");
+    flowStatus.textContent = "Code copied. Paste it on GitHub and approve.";
+  } catch {
+    flowStatus.textContent = "Select the code and copy it manually.";
   }
 });
 
-clearBtn.addEventListener("click", async () => {
+$<HTMLButtonElement>("cancelFlow").addEventListener("click", async () => {
+  stopFlow();
+  await refresh();
+});
+
+$<HTMLButtonElement>("signOut").addEventListener("click", async () => {
   const res = await send<AuthStatus>({ type: "auth.clear" });
-  if (res.ok) {
-    showResult("ok", "Token removed from this browser.");
-    showStatus(res.data);
-  } else {
-    showResult("error", describe(res.error));
-  }
+  if (res.ok) show(resultEl, "ok", "Signed out. The credential was removed from this browser.");
+  else show(resultEl, "error", describe(res.error));
+  await refresh();
 });
 
+$<HTMLButtonElement>("recheck").addEventListener("click", () => void refreshInstallations());
+
+// ---- advanced: PAT fallback ----
+$<HTMLButtonElement>("save").addEventListener("click", async () => {
+  const token = tokenInput.value.trim();
+  if (!token) return show(tokenResult, "error", "Paste a token first.");
+  const res = await send<AuthStatus>({ type: "auth.setToken", token });
+  if (res.ok) {
+    tokenInput.value = "";
+    show(tokenResult, "ok", `Token verified and saved. Signed in as ${res.data.login ?? "?"}.`);
+  } else {
+    show(tokenResult, "error", `Token was NOT saved: ${describe(res.error)}`);
+  }
+  await refresh();
+});
+
+// ---- advanced: prefix ----
 async function loadPrefs(): Promise<void> {
   const res = await send<Prefs>({ type: "prefs.get" });
   if (res.ok) prefixInput.value = res.data.prefix;
 }
-
-savePrefixBtn.addEventListener("click", async () => {
-  const prefix = prefixInput.value.trim();
-  const res = await send<Prefs>({ type: "prefs.set", patch: { prefix } });
-  prefixResult.hidden = false;
+$<HTMLButtonElement>("savePrefix").addEventListener("click", async () => {
+  const res = await send<Prefs>({ type: "prefs.set", patch: { prefix: prefixInput.value.trim() } });
   if (res.ok) {
     prefixInput.value = res.data.prefix;
-    prefixResult.className = "result ok";
-    prefixResult.textContent = `Prefix saved: ${res.data.prefix}  Reload the GitHub repositories page to apply.`;
+    show(prefixResult, "ok", `Prefix saved: ${res.data.prefix}  Reload the GitHub repositories page to apply.`);
   } else {
-    prefixResult.className = "result error";
-    prefixResult.textContent = describe(res.error);
+    show(prefixResult, "error", describe(res.error));
   }
 });
 

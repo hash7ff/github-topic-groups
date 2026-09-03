@@ -23,9 +23,17 @@ export type Request =
   | { type: "options.open" }
   | { type: "repos.list"; owner: string; force?: boolean }
   | { type: "prefs.get" }
-  | { type: "prefs.set"; patch: Partial<Prefs> };
+  | { type: "prefs.set"; patch: Partial<Prefs> }
+  | { type: "auth.deviceStart" }
+  | { type: "auth.devicePoll"; flowId: string }
+  | { type: "auth.installations" };
 
-export type AuthStatus = { configured: boolean; login: string | null };
+export type AuthKind = "pat" | "github-app";
+export type AuthStatus = { configured: boolean; login: string | null; kind: AuthKind | null };
+
+export type DeviceStart = { flowId: string; userCode: string; verificationUri: string; expiresIn: number; interval: number };
+export type DevicePoll = { done: false; interval: number } | { done: true; login: string };
+export type InstallationsStatus = { installed: boolean; count: number; repositorySelection: string | null; installUrl: string };
 
 export type ReposList = {
   owner: string;

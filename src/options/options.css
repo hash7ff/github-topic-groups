@@ -23,3 +23,8 @@ details { margin-top: 12px; }
   .muted { color: #9198a1; }
   .result.error { color: #ff7b72; border-color: #ff7b72; }
 }
+.card { border: 1px solid #d1d9e0; border-radius: 6px; padding: 12px 16px; margin: 12px 0; background: rgba(175, 184, 193, .08); }
+.user-code { font-size: 22px; letter-spacing: 2px; padding: 4px 10px; }
+button.small { padding: 2px 10px; font-weight: 500; }
+.button-link { display: inline-block; font-weight: 600; padding: 6px 14px; border-radius: 6px; border: 1px solid #1f883d; background: #1f883d; color: #fff !important; text-decoration: none; margin-right: 8px; }
+@media (prefers-color-scheme: dark) { .card { border-color: #3d444d; } }

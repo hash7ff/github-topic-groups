@@ -72,12 +72,13 @@ test("putTopics sends the complete list as {names} with PUT to the topics endpoi
 });
 
 test("the wrapper only ever issues GET and PUT", async () => {
-  const { fetchImpl, calls } = mockFetch((c) => (c.url.endsWith("/user") ? json({ login: "u" }) : c.url.includes("/topics") ? json({ names: [] }) : json([])));
+  const { fetchImpl, calls } = mockFetch((c) => (c.url.endsWith("/user") ? json({ login: "u" }) : c.url.includes("/topics") ? json({ names: [] }) : c.url.includes("/installations") ? json({ total_count: 0, installations: [] }) : json([])));
   const a = api(fetchImpl);
   await a.whoami();
   await a.listOwnRepos();
   await a.getTopics("o", "r");
   await a.putTopics("o", "r", []);
+  await a.listInstallations();
   assert.deepEqual([...new Set(calls.map((c) => c.method))].sort(), ["GET", "PUT"]);
   assert.ok(calls.every((c) => c.url.startsWith("https://api.github.com/")));
 });

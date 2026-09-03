@@ -1,5 +1,5 @@
-// GitHub REST wrapper. Deliberately tiny: the ONLY endpoints this extension can ever call are the four below
-// (GET /user, GET /user/repos, GET+PUT /repos/{owner}/{repo}/topics). No other method or path exists here,
+// GitHub REST wrapper. Deliberately tiny: the ONLY endpoints this extension can ever call are the five below
+// (GET /user, GET /user/repos, GET /user/installations, GET+PUT /repos/{owner}/{repo}/topics). No other method or path exists here,
 // so an Administration-scoped token can never be used for anything else through this code.
 import type { ApiErrorInfo, RepoSummary } from "../core/types.ts";
 
@@ -25,7 +25,11 @@ export type GitHubApi = {
   getTopics(owner: string, repo: string): Promise<string[]>;
   /** Full replacement: callers MUST pass the complete list (see core/topicsMerge.ts). */
   putTopics(owner: string, repo: string, names: readonly string[]): Promise<string[]>;
+  /** GitHub App installations the signed-in user can access (used to detect "app not installed yet"). */
+  listInstallations(): Promise<Installation[]>;
 };
+
+export type Installation = { id: number; appSlug: string | null; account: string | null; repositorySelection: string | null };
 
 export function parseLinkNext(link: string | null): string | null {
   if (!link) return null;
@@ -145,6 +149,20 @@ export function createGitHubApi(deps: { getToken: () => Promise<string | null>; 
       const names = (json as { names?: unknown } | null)?.names;
       if (!Array.isArray(names)) throw new GitHubApiError({ kind: "other", status: 200, message: "Unexpected topics response." });
       return names.filter((t): t is string => typeof t === "string");
+    },
+    async listInstallations() {
+      const { json } = await request("GET", "/user/installations?per_page=100");
+      const list = (json as { installations?: unknown } | null)?.installations;
+      if (!Array.isArray(list)) throw new GitHubApiError({ kind: "other", status: 200, message: "Unexpected installations response." });
+      return list.map((raw): Installation => {
+        const r = (raw ?? {}) as Record<string, unknown>;
+        return {
+          id: typeof r["id"] === "number" ? r["id"] : 0,
+          appSlug: str(r["app_slug"]),
+          account: str((r["account"] as Record<string, unknown> | undefined)?.["login"]),
+          repositorySelection: str(r["repository_selection"]),
+        };
+      });
     },
     async putTopics(owner, repo, names) {
       const { json } = await request("PUT", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/topics`, { names: [...names] });

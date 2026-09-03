@@ -22,6 +22,7 @@ export type ApiErrorKind =
   | "rate_limited"
   | "network"
   | "unsupported"
+  | "not_installed"
   | "other";
 
 export type ApiErrorInfo = {
@@ -31,4 +32,6 @@ export type ApiErrorInfo = {
   /** From GitHub's `x-accepted-github-permissions` header on 403s: tells the user which permission is missing. */
   acceptedPermissions?: string;
   retryAfterSeconds?: number;
+  /** For `not_installed`: where the user can install the GitHub App. */
+  installUrl?: string;
 };

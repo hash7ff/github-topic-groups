@@ -1,23 +1,46 @@
 // Thin adapter over chrome.storage. The token lives ONLY here (local) and is read ONLY by the service worker.
 import type { RepoSummary } from "../core/types.ts";
+import type { AuthRecord } from "../core/auth.ts";
 
-const TOKEN_KEY = "gtf.token";
+const AUTH_KEY = "gtf.auth";
+const LEGACY_TOKEN_KEY = "gtf.token"; // pre-M4.5 installs stored a bare PAT here
 const LOGIN_KEY = "gtf.login";
+const FLOW_KEY = "gtf.deviceflow";
 const repoCacheKey = (owner: string): string => `gtf.cache.repos.${owner.toLowerCase()}`;
 
 export type RepoCache = { repos: RepoSummary[]; fetchedAt: number };
+export type DeviceFlowState = { flowId: string; deviceCode: string; interval: number; expiresAt: number };
 
-export async function getToken(): Promise<string | null> {
-  const r = await chrome.storage.local.get(TOKEN_KEY);
-  const v = r[TOKEN_KEY];
-  return typeof v === "string" && v.length > 0 ? v : null;
+export async function getAuth(): Promise<AuthRecord | null> {
+  const r = await chrome.storage.local.get([AUTH_KEY, LEGACY_TOKEN_KEY]);
+  const a = r[AUTH_KEY] as AuthRecord | undefined;
+  if (a && typeof a.accessToken === "string" && a.accessToken.length > 0 && (a.kind === "pat" || a.kind === "github-app")) return a;
+  const legacy = r[LEGACY_TOKEN_KEY];
+  if (typeof legacy === "string" && legacy.length > 0) {
+    const migrated: AuthRecord = { kind: "pat", accessToken: legacy };
+    await chrome.storage.local.set({ [AUTH_KEY]: migrated });
+    await chrome.storage.local.remove(LEGACY_TOKEN_KEY);
+    return migrated;
+  }
+  return null;
 }
-export async function setToken(token: string): Promise<void> {
-  await chrome.storage.local.set({ [TOKEN_KEY]: token });
+export async function setAuth(record: AuthRecord): Promise<void> {
+  await chrome.storage.local.set({ [AUTH_KEY]: record });
+  await chrome.storage.local.remove(LEGACY_TOKEN_KEY);
 }
-export async function clearToken(): Promise<void> {
-  await chrome.storage.local.remove(TOKEN_KEY);
+export async function clearAuth(): Promise<void> {
+  await chrome.storage.local.remove([AUTH_KEY, LEGACY_TOKEN_KEY]);
   await clearSession();
+}
+
+export async function getDeviceFlow(): Promise<DeviceFlowState | null> {
+  const r = await chrome.storage.session.get(FLOW_KEY);
+  const v = r[FLOW_KEY] as DeviceFlowState | undefined;
+  return v && typeof v.deviceCode === "string" ? v : null;
+}
+export async function setDeviceFlow(state: DeviceFlowState | null): Promise<void> {
+  if (state) await chrome.storage.session.set({ [FLOW_KEY]: state });
+  else await chrome.storage.session.remove(FLOW_KEY);
 }
 
 export async function getLogin(): Promise<string | null> {

@@ -138,7 +138,10 @@ export function renderError(body: HTMLElement, error: ApiErrorInfo, actions: Vie
         { className: "gtf-actions" },
         h("button", { className: "gtf-btn", type: "button", onClick: () => actions.retry() }, "Retry"),
         h("button", { className: "gtf-btn", type: "button", onClick: () => actions.setMode("original") }, "Show original GitHub view"),
-        error.kind === "unauthorized" || error.kind === "forbidden"
+        error.kind === "not_installed" && error.installUrl
+          ? h("a", { className: "gtf-btn", href: error.installUrl }, "Install on your repositories")
+          : null,
+        error.kind === "unauthorized" || error.kind === "forbidden" || error.kind === "not_installed"
           ? h("button", { className: "gtf-btn", type: "button", onClick: () => actions.openSettings() }, "Open settings")
           : null,
       ),
@@ -152,8 +155,8 @@ export function renderUnconfigured(body: HTMLElement, actions: ViewActions): voi
     h(
       "div",
       { className: "gtf-notice" },
-      "Set up a GitHub token to enable the grouped view. ",
-      h("button", { className: "gtf-btn", type: "button", onClick: () => actions.openSettings() }, "Open settings"),
+      "Sign in with GitHub to enable the grouped view. ",
+      h("button", { className: "gtf-btn", type: "button", onClick: () => actions.openSettings() }, "Sign in"),
     ),
   );
 }
