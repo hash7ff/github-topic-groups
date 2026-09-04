@@ -14,6 +14,9 @@ export function repo(name: string, topics: string[], extra: Partial<RepoSummary>
     topics,
     archived: false,
     fork: false,
+    mirror: false,
+    template: false,
+    stargazers: 0,
     ...extra,
   };
 }

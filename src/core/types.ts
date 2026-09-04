@@ -12,6 +12,9 @@ export type RepoSummary = {
   topics: string[];
   archived: boolean;
   fork: boolean;
+  mirror: boolean;
+  template: boolean;
+  stargazers: number;
 };
 
 export type ApiErrorKind =

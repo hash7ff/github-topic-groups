@@ -10,7 +10,7 @@ extension settings; the default was chosen because generic prefixes such as `pro
 repositories (`project-management`, `project-euler`, …) and would be misread as folders. Nothing is stored anywhere but GitHub:
 uninstall the extension and your classification is still there, as plain topics.
 
-> **Status: v0.1.0 — feature complete for the MVP, not yet on the Chrome Web Store.**
+> **Status: v0.2.0 — feature complete for the MVP, not yet on the Chrome Web Store.**
 > Grouped view, Move to…, New project, Rename, Delete, conflict fix and "Sign in with GitHub" all work and were
 > verified against real repositories. Website: https://hash7ff.github.io/github-topic-folders/
 
@@ -31,6 +31,9 @@ uninstall the extension and your classification is still there, as plain topics.
 - **Move to…** any repository to another project, to Ungrouped, or into a new project.
 - **New project** from one or many repositories; **Rename** and **Delete** a project (repositories are never deleted).
 - **Conflicts**: a repository carrying several folder topics is shown separately with a **Fix** action.
+- **GitHub's own controls keep working**: the Find / Type / Language / Sort controls above the list drive the
+  grouped view too, because their state is read from the URL rather than from GitHub's DOM.
+- **Add repositories to a folder in bulk** from the folder's menu, with a filter and select-all.
 - **Sign in with GitHub** through the *Topic Folders* GitHub App (device flow: enter a short code on GitHub).
   A personal access token still works as an advanced fallback.
 

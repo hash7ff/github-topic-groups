@@ -5,6 +5,8 @@ import type { RepoSummary, ApiErrorInfo } from "../../core/types.ts";
 import { UNGROUPED_KEY } from "../../core/messages.ts";
 import { displayNameFromTopic } from "../../core/topic.ts";
 import { relativeTime } from "../../core/relativeTime.ts";
+import { languageColor } from "../../core/languageColors.ts";
+import { urlWithout, type GitHubFilter } from "../../core/filters.ts";
 
 export type ViewActions = {
   toggleGroup(key: string): void;
@@ -53,10 +55,31 @@ export function buildToolbar(actions: ViewActions): { toolbar: HTMLElement; stat
   return { toolbar, status, search, seg };
 }
 
+/** Shows which of GitHub's own controls are narrowing the grouped view, each removable through GitHub's own URL. */
+export function renderFilterChips(host: HTMLElement, filter: GitHubFilter, href: string): void {
+  clear(host);
+  const chips: Array<[string, keyof GitHubFilter]> = [];
+  if (filter.language !== "") chips.push([`Language: ${filter.language}`, "language"]);
+  if (filter.type !== "") chips.push([`Type: ${filter.type}`, "type"]);
+  if (filter.sort !== "") chips.push([`Sort: ${filter.sort}`, "sort"]);
+  host.hidden = chips.length === 0;
+  if (chips.length === 0) return;
+  host.append(h("span", { className: "gtf-muted" }, "From GitHub's filters:"));
+  for (const [label, key] of chips) {
+    host.append(h("a", { className: "gtf-chip", href: urlWithout(href, key), title: `Remove this filter` }, label, h("span", { className: "gtf-chip-x" }, "×")));
+  }
+}
+
 export function setSegmentedMode(seg: HTMLElement, mode: "grouped" | "original"): void {
   for (const btn of seg.querySelectorAll<HTMLButtonElement>(".gtf-seg-btn")) {
     btn.setAttribute("aria-pressed", btn.dataset["mode"] === mode ? "true" : "false");
   }
+}
+
+function languageDot(language: string): HTMLElement {
+  const dot = h("span", { className: "gtf-lang-dot" });
+  dot.style.backgroundColor = languageColor(language) ?? "var(--fgColor-muted)";
+  return dot;
 }
 
 function labels(repo: RepoSummary): HTMLElement[] {
@@ -86,7 +109,7 @@ export function repoRow(repo: RepoSummary, extra?: HTMLElement, actions?: ViewAc
       h(
         "div",
         { className: "gtf-repo-meta" },
-        repo.language ? h("span", { className: "gtf-repo-lang" }, repo.language) : null,
+        repo.language ? h("span", { className: "gtf-repo-lang" }, languageDot(repo.language), repo.language) : null,
         updated ? h("span", {}, `Updated ${updated}`) : null,
       ),
     ),

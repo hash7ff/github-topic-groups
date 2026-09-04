@@ -93,3 +93,14 @@ a.gtf-btn { text-decoration: none; display: inline-block; }
 .gtf-btn-danger { background: var(--bgColor-danger-muted); border-color: var(--fgColor-danger); color: var(--fgColor-danger); }
 .gtf-btn-danger:hover { background: var(--fgColor-danger); color: #fff; }
 .gtf-conflict-cell { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+/* filter chips coming from GitHub's own controls */
+.gtf-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; font-size: 12px; }
+.gtf-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid var(--borderColor-default); border-radius: 2em; background: var(--bgColor-muted); color: var(--fgColor-default); text-decoration: none; }
+.gtf-chip:hover { background: var(--bgColor-neutral-muted); }
+.gtf-chip-x { color: var(--fgColor-muted); font-weight: 600; }
+.gtf-lang-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.gtf-repo-lang { display: inline-flex; align-items: center; }
+.gtf-picker-tools { display: flex; gap: 12px; margin: 6px 0 0; }
+.gtf-link-btn { font: inherit; font-size: 12px; padding: 0; border: 0; background: none; color: var(--fgColor-accent); cursor: pointer; }
+.gtf-link-btn:hover { text-decoration: underline; }

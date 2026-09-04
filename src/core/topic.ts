@@ -1,4 +1,14 @@
 // Pure helpers around the folder-topic convention (`<prefix><slug>`). No chrome.* / DOM access here.
+//
+// EXTENSION POINT — ordering and nesting.
+// A GitHub topic is a flat string, so anything beyond a name has to be encoded in it (for example
+// `topic-folders-10-client-a` for a sort key, or a separator for `Client A / Backend`). Every conversion between a
+// topic and what the user sees goes through exactly two functions here: `displayNameFromTopic` (topic -> label) and
+// `normalizeProjectName` (label -> topic), with `isProjectTopic` deciding what counts as a folder. Grouping, the
+// dialogs and the write path never parse topic strings themselves, so a future convention can be added by changing
+// these functions and returning richer values, without touching the UI or the write path.
+// Deliberately NOT done in v0.1: such a convention leaks into every topic name and cannot be undone for users who
+// already tagged repositories, so it needs real usage evidence first.
 
 /**
  * Default prefix. `project-` was rejected because thousands of public repositories already carry topics such as

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GitHub Topic Folders",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Shows your GitHub repositories grouped into folders by topic-folders-* topics. Topics stay the single source of truth.",
   "icons": {
     "16": "icons/icon16.png",

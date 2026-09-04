@@ -108,4 +108,6 @@ test("toRepoSummary tolerates missing optional fields and rejects garbage", () =
   assert.deepEqual(r?.topics, []);
   assert.equal(r?.private, false);
   assert.equal(r?.description, null);
+  assert.equal(r?.stargazers, 0);
+  assert.equal(r?.mirror, false);
 });

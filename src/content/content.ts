@@ -5,13 +5,13 @@ import { h } from "./ui/h.ts";
 import { closeAllDialogs } from "./ui/dialog.ts";
 import { send } from "./messaging.ts";
 import { groupRepos, type Grouped } from "../core/grouping.ts";
-import { filterGrouped } from "../core/search.ts";
+import { applyFilter, EMPTY_FILTER, isFiltering, parseFilterFromUrl, type GitHubFilter } from "../core/filters.ts";
 import { relativeTime } from "../core/relativeTime.ts";
 import { DEFAULT_PREFS, type AuthStatus, type Prefs, type ReposList, type ViewMode } from "../core/messages.ts";
 import type { ApiErrorInfo } from "../core/types.ts";
-import { buildToolbar, describeError, renderError, renderGroups, renderLoading, renderUnconfigured, setSegmentedMode, type ViewActions } from "./ui/view.ts";
+import { buildToolbar, describeError, renderError, renderFilterChips, renderGroups, renderLoading, renderUnconfigured, setSegmentedMode, type ViewActions } from "./ui/view.ts";
 import { openMoveDialog } from "./ui/moveDialog.ts";
-import { openNewProjectDialog } from "./ui/newProjectDialog.ts";
+import { openAddRepositoriesDialog, openNewProjectDialog } from "./ui/pickerDialog.ts";
 import { openDeleteDialog, openProjectMenu, openRenameDialog } from "./ui/projectDialogs.ts";
 import { openFixDialog } from "./ui/fixDialog.ts";
 import { runBulk } from "./bulk.ts";
@@ -47,6 +47,9 @@ class GroupedView {
   private readonly status: HTMLElement;
   private readonly seg: HTMLElement;
   private readonly flash: HTMLElement;
+  private readonly chips: HTMLElement;
+  /** GitHub's own Find/Type/Language/Sort controls stay above our view; their state lives in the URL. */
+  private readonly urlFilter: GitHubFilter = EMPTY_FILTER;
   private flashTimer: number | undefined;
   private busy = false;
   private loadSeq = 0;
@@ -76,12 +79,17 @@ class GroupedView {
       projectMenu: (topic) => this.openProjectMenu(topic),
       fixConflict: (name) => this.openFix(name),
     };
-    const { toolbar, status, seg } = buildToolbar(actions);
+    const { toolbar, status, seg, search } = buildToolbar(actions);
     this.status = status;
     this.seg = seg;
+    this.urlFilter = parseFilterFromUrl(location.href);
+    this.query = this.urlFilter.q;
+    search.value = this.urlFilter.q; // GitHub's search box submitted this; keep ours in sync
+    this.chips = h("div", { className: "gtf-chips", hidden: true });
     this.body = h("div", { className: "gtf-body" });
     this.flash = h("div", { className: "gtf-flash", hidden: true });
-    this.root = h("div", { id: ROOT_ID, className: "gtf-root", dataset: { gtfUrl: location.href } }, toolbar, this.flash, this.body);
+    this.root = h("div", { id: ROOT_ID, className: "gtf-root", dataset: { gtfUrl: location.href } }, toolbar, this.chips, this.flash, this.body);
+    renderFilterChips(this.chips, this.urlFilter, location.href);
     this.actions = actions;
   }
 
@@ -186,6 +194,23 @@ class GroupedView {
     const existing = new Set(this.phase.grouped.projects.map((p) => p.topic));
     openProjectMenu({
       name: project.name,
+      onAdd: () =>
+        openAddRepositoriesDialog({
+          projectName: project.name,
+          repos: this.phase.kind === "ready" ? this.phase.data.repos : [],
+          preselected: [],
+          conflicted: new Set(this.phase.kind === "ready" ? this.phase.grouped.conflicts.map((c) => c.repo.name) : []),
+          memberNames: new Set(repos),
+          onAdd: (names) => {
+            const all = this.phase.kind === "ready" ? this.phase.data.repos : [];
+            const expectOf = (name: string) => projectTopics(all.find((r) => r.name === name)?.topics ?? [], this.prefs.prefix);
+            return this.applyWrites(
+              names.map((repo) => ({ owner: this.ctx.owner, repo, project: topic, expect: expectOf(repo) })),
+              `Moved ${names.length} repositor${names.length === 1 ? "y" : "ies"} into ${project.name}.`,
+              true,
+            );
+          },
+        }),
       onRename: () =>
         openRenameDialog({
           name: project.name,
@@ -306,8 +331,9 @@ class GroupedView {
     if (p.kind === "loading") return renderLoading(this.body);
     if (p.kind === "unconfigured") return renderUnconfigured(this.body, this.actions);
     if (p.kind === "error") return renderError(this.body, p.error, this.actions);
-    const searching = this.query.trim() !== "";
-    renderGroups(this.body, searching ? filterGrouped(p.grouped, this.query) : p.grouped, this.prefs.collapsed, searching, this.prefs.prefix, this.actions);
+    const filter: GitHubFilter = { ...this.urlFilter, q: this.query };
+    const searching = isFiltering(filter);
+    renderGroups(this.body, applyFilter(p.grouped, filter), this.prefs.collapsed, searching, this.prefs.prefix, this.actions);
   }
 }
 

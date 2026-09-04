@@ -4,11 +4,13 @@ import { normalizeProjectName } from "../../core/topic.ts";
 
 const plural = (n: number) => `${n} repositor${n === 1 ? "y" : "ies"}`;
 
-export function openProjectMenu(opts: { name: string; onRename(): void; onDelete(): void }): void {
+export function openProjectMenu(opts: { name: string; onAdd(): void; onRename(): void; onDelete(): void }): void {
   const dlg = openDialog(opts.name);
   const item = (label: string, danger: boolean, onClick: () => void) =>
     h("button", { className: `gtf-menu-item ${danger ? "gtf-menu-item-danger" : ""}`.trim(), type: "button", onClick: () => { dlg.close(); onClick(); } }, h("span", { className: "gtf-menu-item-label" }, label));
-  dlg.body.append(h("div", { className: "gtf-menu" }, item("Rename project…", false, opts.onRename), item("Delete project…", true, opts.onDelete)));
+  dlg.body.append(
+    h("div", { className: "gtf-menu" }, item("Add repositories…", false, opts.onAdd), item("Rename project…", false, opts.onRename), item("Delete project…", true, opts.onDelete)),
+  );
 }
 
 export function openRenameDialog(opts: {

@@ -15,7 +15,7 @@ const topics = async () => ({ api: (await gh('/repos/mutsuyuki/gtf-test-api/topi
   const dlg = () => page.locator('dialog.gtf-dialog[open]');
 
   const opt0 = await ctx.newPage(); await opt0.goto(`chrome-extension://${process.argv[2]}/options.html`);
-  await opt0.evaluate(async () => { const r = await chrome.storage.local.get('gtf.prefs'); await chrome.storage.local.set({ 'gtf.prefs': { ...(r['gtf.prefs'] || {}), privacyNoticeDismissed: false } }); }); await opt0.close();
+  await opt0.evaluate(async () => { const r = await chrome.storage.local.get('gtf.prefs'); await chrome.storage.local.set({ 'gtf.prefs': { ...(r['gtf.prefs'] || {}), privacyNoticeDismissed: false } }); await chrome.storage.session.clear(); }); await opt0.close();
   // GitHub's list endpoint can lag behind topic writes: wait until it agrees with the topics endpoint for the test repos.
   for (let i = 0; i < 30; i++) {
     const list = await gh('/user/repos?affiliation=owner&per_page=100&sort=full_name');
