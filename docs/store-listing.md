@@ -1,6 +1,6 @@
 # Chrome ウェブストア 掲載準備メモ
 
-作成 2026-09-04 / 対象バージョン 0.2.0 / 公開者: 合同会社HASH7FF
+作成 2026-09-04 / 対象バージョン 0.3.0 / 公開者: 合同会社HASH7FF
 
 提出時に埋める内容の下書き。**未提出**（開発者登録もまだ）。
 
@@ -39,6 +39,7 @@ topic-folders-client-a and it appears under a collapsible "Client A" folder on y
   search, type, language and sort controls keep working.
 - Sign in with GitHub. No personal access token to create; the extension asks GitHub for permission through the
   official device flow and talks to nobody but GitHub.
+- Works on organization repository pages too, for organizations where you install the app.
 
 Open source (MIT): https://github.com/hash7ff/github-topic-folders
 ```

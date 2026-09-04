@@ -211,7 +211,7 @@ v0.1.1 の後、田中さんの判断で以下を確定した。
 | 並び順・入れ子 | **設計だけ残す** | Topic 名に符号化するしかなく、一度使い始めると取り消せない。`src/core/topic.ts` に拡張点をコメントで明示（変換は 2 関数に集約済みで、UI と書き込み経路は Topic 文字列を解釈しない） |
 | ドラッグ&ドロップ | **不採用** | 現状 2 クリックで足りる |
 | 全 Organization 横断ダッシュボード | **不採用** | 各 Organization 内で整理できれば十分 |
-| Organization 対応 | 公開後の着手候補（§5.7 に実地調査） | API はほぼ無償。ページは React だが意味論的な足場と soft-nav イベントが在り、当初評価ほど高くない |
+| Organization 対応 | **実装済み（0.3.0、§5.7）** | 田中さんが hash7ff へリポジトリを移す予定で価値が生まれ、検証用リポも用意できたため前倒しした |
 | ローカル別名 | 保留 | 匿名 Topic（`topic-folders-c01`）の表示名をブラウザ内に持つ案。同期しないので PC を変えると符号のまま |
 | 一括処理の再起動耐性 | 保留 | Port 接続中は Service Worker が延命される。実測 1 件約 1.3 秒なので 109 件で約 2 分。初期整理で落ちなければ不要 |
 
@@ -255,6 +255,18 @@ src/content/pages/
 
 **権限モデル（公式ドキュメントで確認）**: user access token は「App が持つ権限」と「その人自身が持つ権限」の**積**。App を Org に入れても、本人がそのリポの admin でなければ Topics は変更できない。自分の Org ではオーナーなので問題ない。
 なお App 未インストールの Org でも**公開リポは読める**ので、中途半端に一部だけ表示することは可能。混乱を招くので「この Organization にインストールしてください」の表示に倒すのが妥当。
+
+**実装（0.3.0、2026-09-04）**
+
+見積もりどおり、ページアダプタ 1 枚で済んだ。`src/content/pages/` に `types.ts` / `userProfile.ts` / `orgRepos.ts` / `index.ts` を追加し、`content.ts` は URL でアダプタを選ぶだけになった。UI・ダイアログ・書き込み経路は無改変。API は `listOrgRepos(org)` を追加し、Service Worker の owner チェックを `resolveTarget()`（ログイン本人か、`/user/installations` に含まれるアカウント）に置き換えた。React 対策として、アダプタは一覧コンテナを**毎回引き直し**、同一 URL なら View を作り直さず `attach()` で位置と非表示だけ当て直す。
+
+実機確認（`scripts/dev/verify-org-page.cjs`、hash7ff の gtf-org-test-a〜e）:
+- 組織ページでマウントし、GitHub の一覧を隠してその直前に表示（6 リポ）。
+- 「New project」で 2 リポに Topic を書き込み → GitHub 側にも反映。
+- GitHub 純正のフィルタ（soft navigation）と戻る操作の後も表示が維持され、位置と非表示も保たれた。`q` の中の `type:` `language:` 修飾子も解釈する。
+- Move と Delete も動作し、後片付けで Topic が消えたことを確認。
+- 個人ページは従来どおり動作。ページエラーなし。
+- 未インストールの組織（`verify-org-not-installed.cjs`）では「Topic Folders is not installed on <org>」とインストール導線を表示し、GitHub 標準の一覧は残る。
 
 **戦略的な含意**: Org ページが既に React で個人ページがまだサーバー描画ということは、GitHub が移行途中である可能性が高い。個人ページが React 化されたとき、現在の足場は消える。その場合この拡張は「何もしない」だけで GitHub の操作は壊さない設計（§19）だが、機能は止まる。DOM 依存を最小に保つ現方針の妥当性を裏づけると同時に、いずれ React ページへの差し込み手法が必要になることを示す。
 

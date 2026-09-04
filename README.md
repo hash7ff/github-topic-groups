@@ -10,7 +10,7 @@ extension settings; the default was chosen because generic prefixes such as `pro
 repositories (`project-management`, `project-euler`, …) and would be misread as folders. Nothing is stored anywhere but GitHub:
 uninstall the extension and your classification is still there, as plain topics.
 
-> **Status: v0.2.0 — feature complete for the MVP, not yet on the Chrome Web Store.**
+> **Status: v0.3.0 — feature complete for the MVP, not yet on the Chrome Web Store.**
 > Grouped view, Move to…, New project, Rename, Delete, conflict fix and "Sign in with GitHub" all work and were
 > verified against real repositories. Website: https://hash7ff.github.io/github-topic-folders/
 
@@ -34,6 +34,8 @@ uninstall the extension and your classification is still there, as plain topics.
 - **GitHub's own controls keep working**: the Find / Type / Language / Sort controls above the list drive the
   grouped view too, because their state is read from the URL rather than from GitHub's DOM.
 - **Add repositories to a folder in bulk** from the folder's menu, with a filter and select-all.
+- **Organizations too**: the same view works on `github.com/orgs/<org>/repositories` for organizations where the
+  app is installed; elsewhere it says so and links to the installation page.
 - **Sign in with GitHub** through the *Topic Folders* GitHub App (device flow: enter a short code on GitHub).
   A personal access token still works as an advanced fallback.
 
@@ -59,8 +61,9 @@ pasted instead of signing in.
   It is never given to the GitHub web page, never logged, and the content script that runs on github.com
   cannot access it (verified at build time). There is no client secret anywhere: device-flow tokens are refreshed
   with the public client ID alone.
-- The extension calls exactly five GitHub REST endpoints: `GET /user`, `GET /user/repos`, `GET /user/installations`,
-  `GET /repos/{owner}/{repo}/topics` and `PUT /repos/{owner}/{repo}/topics`. It cannot delete repositories.
+- The extension calls exactly six GitHub REST endpoints: `GET /user`, `GET /user/repos`, `GET /orgs/{org}/repos`,
+  `GET /user/installations`, `GET /repos/{owner}/{repo}/topics` and `PUT /repos/{owner}/{repo}/topics`.
+  It cannot delete repositories.
 - Every write is journaled locally (last 200, including dry runs) so a mistake can be traced and undone by hand.
 - **Topic names are public, even on private repositories.** Do not use confidential client or project names
   as project topics.
@@ -74,6 +77,9 @@ pasted instead of signing in.
 - With a GitHub App installation limited to selected repositories, GitHub still lists all your public repositories
   (read-only); moving one of them fails until the app is installed on it. Installing on *All repositories* avoids this.
 - Folder names are derived from the topic (`topic-folders-my-oss` → "My Oss"); casing is not preserved.
+- For an organization, the app must be installed on that organization. If you are not an owner, GitHub turns the
+  install button into a request that an owner has to approve. Changing topics additionally requires admin
+  permission on the repository, because a user access token grants only what both the app and you may do.
 
 ## Documentation
 

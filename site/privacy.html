@@ -30,14 +30,14 @@
   <h2>Data the extension handles</h2>
   <ul>
     <li><strong>GitHub credentials.</strong> Either a personal access token you paste into the extension's settings, or an access token and refresh token obtained when you use "Sign in with GitHub" (GitHub's device authorization flow). The credential is stored in the browser's extension storage (<code>chrome.storage.local</code>) on your device, with access restricted to the extension's trusted contexts (its service worker and settings page). It is sent to <code>api.github.com</code> (and, for sign-in and token refresh, <code>github.com</code>) to authenticate requests, and nowhere else. It is never exposed to web pages and never logged.</li>
-    <li><strong>Repository metadata.</strong> Names, visibility, descriptions, languages, update times and topics of the repositories you own, and your GitHub login name, fetched from the GitHub API. This is cached in the browser's session storage to avoid repeated requests and is discarded when the browser closes.</li>
+    <li><strong>Repository metadata.</strong> Names, visibility, descriptions, languages, update times and topics of the repositories you own or that belong to an organization whose repository page you open, and your GitHub login name, fetched from the GitHub API. This is cached in the browser's session storage to avoid repeated requests and is discarded when the browser closes.</li>
     <li><strong>Write journal.</strong> Before each topic change the extension records, locally in <code>chrome.storage.local</code>, the repository name and its topics before and after the change (the last 200 entries, including dry runs). This exists so a mistake can be traced and undone by hand. It is never transmitted.</li>
     <li><strong>Preferences.</strong> Which folders are collapsed, whether the grouped or original view is shown, the folder-topic prefix, and the dry-run setting. Stored locally in the browser.</li>
   </ul>
   <p>The extension does not collect or store your name, email address, browsing history, or any data from web pages other than the GitHub repositories page it operates on.</p>
 
   <h2>What the extension does on GitHub</h2>
-  <p>The extension calls only these GitHub REST API endpoints: <code>GET /user</code>, <code>GET /user/repos</code>, <code>GET /user/installations</code>,
+  <p>The extension calls only these GitHub REST API endpoints: <code>GET /user</code>, <code>GET /user/repos</code>, <code>GET /orgs/{org}/repos</code>, <code>GET /user/installations</code>,
     <code>GET /repos/{owner}/{repo}/topics</code> and <code>PUT /repos/{owner}/{repo}/topics</code>, plus GitHub's OAuth device-flow endpoints on <code>github.com</code> for sign-in and token refresh.
     Writes happen only in response to an action you take (creating, moving, renaming or deleting a project, or fixing a conflict) and replace the repository's topic list while preserving every topic that does not start with the folder prefix you configured (default <code>topic-folders-</code>).
     Because GitHub's topics API replaces the whole list, a topic added by someone else in the fraction of a second between the extension reading and writing the list could be lost; the extension re-reads the list immediately before each write to keep that window as small as possible.

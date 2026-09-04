@@ -1,7 +1,8 @@
-// Content script: detect the "Repositories" tab of a user profile and mount the grouped view.
-// Rules: read as little as possible from GitHub's DOM (owner from URL + one anchor element),
+// Content script: mount the grouped view on a repository list page.
+// Rules: read as little as possible from GitHub's DOM (that knowledge lives entirely in ./pages/*),
 // never use innerHTML with GitHub-derived strings, never touch chrome.storage or the token (service worker only).
 import { h } from "./ui/h.ts";
+import { pickAdapter, type PageAdapter, type PageContext } from "./pages/index.ts";
 import { closeAllDialogs } from "./ui/dialog.ts";
 import { send } from "./messaging.ts";
 import { groupRepos, type Grouped } from "../core/grouping.ts";
@@ -19,21 +20,6 @@ import { displayNameFromTopic, projectTopics } from "../core/topic.ts";
 import type { BulkItem, SetProjectResult } from "../core/messages.ts";
 
 const ROOT_ID = "gtf-root";
-const ANCHOR_ID = "user-repositories-list";
-
-type PageContext = { owner: string };
-
-/** `https://github.com/<owner>?tab=repositories` and nothing else. */
-export function detectRepositoriesPage(href: string): PageContext | null {
-  const url = new URL(href);
-  if (url.hostname !== "github.com") return null;
-  const segments = url.pathname.split("/").filter(Boolean);
-  if (segments.length !== 1) return null;
-  if (url.searchParams.get("tab") !== "repositories") return null;
-  const owner = segments[0];
-  if (!owner || owner.startsWith("@")) return null;
-  return { owner };
-}
 
 type Phase =
   | { kind: "loading" }
@@ -58,11 +44,15 @@ class GroupedView {
   private query = "";
   private disposed = false;
   private readonly ctx: PageContext;
-  private readonly anchor: HTMLElement;
+  private readonly adapter: PageAdapter;
+  /** Re-read on every render: React pages replace this element (see pages/orgRepos.ts). */
+  private anchor: HTMLElement;
   private readonly actions: ViewActions;
+  readonly url = location.href;
 
-  constructor(ctx: PageContext, anchor: HTMLElement) {
+  constructor(ctx: PageContext, adapter: PageAdapter, anchor: HTMLElement) {
     this.ctx = ctx;
+    this.adapter = adapter;
     this.anchor = anchor;
     const actions: ViewActions = {
       toggleGroup: (key) => this.toggleGroup(key),
@@ -101,11 +91,18 @@ class GroupedView {
     await this.load(false);
   }
 
+  /** Put our root in front of GitHub's list and apply the current mode. Safe to call on every render. */
+  attach(anchor: HTMLElement): void {
+    this.anchor = anchor;
+    if (anchor.previousElementSibling !== this.root) anchor.before(this.root);
+    this.applyMode();
+  }
+
   /** Restore GitHub's own list and drop anything this view still owns. Called on navigation away / remount. */
   dispose(): void {
     this.disposed = true;
     this.loadSeq++;
-    this.anchor.hidden = false;
+    this.adapter.restore();
     closeAllDialogs();
     this.root.remove();
   }
@@ -307,7 +304,9 @@ class GroupedView {
     const grouped = this.prefs.viewMode === "grouped";
     setSegmentedMode(this.seg, this.prefs.viewMode);
     this.body.hidden = !grouped;
-    this.anchor.hidden = grouped && this.phase.kind === "ready";
+    const hide = grouped && this.phase.kind === "ready";
+    this.anchor.hidden = hide;
+    if (!hide) this.adapter.restore();
   }
 
   private render(): void {
@@ -337,33 +336,33 @@ class GroupedView {
   }
 }
 
-// Exactly one live view per page. Tracked here (not via DOM lookup) so a view whose root Turbo already removed
+// Exactly one live view per page. Tracked here (not via DOM lookup) so a view whose root the page already removed
 // is still disposed: its pending loads/writes are ignored and its dialogs closed.
 let activeView: GroupedView | null = null;
 
 function mount(): void {
-  const ctx = detectRepositoriesPage(location.href);
-  const anchor = document.getElementById(ANCHOR_ID);
+  const picked = pickAdapter(location.href);
+  const anchor = picked?.adapter.anchor() ?? null;
 
-  if (!ctx || !anchor) {
-    // Not a repositories page, or GitHub's DOM changed: leave the original UI untouched.
+  if (!picked || !anchor) {
+    // Not a repository list page, or GitHub's DOM changed: leave the original UI untouched.
     activeView?.dispose();
     activeView = null;
     return;
   }
-  ensureObserver();
-  const alreadyMounted =
-    activeView !== null &&
-    activeView.root.isConnected &&
-    activeView.root.dataset["gtfUrl"] === location.href &&
-    anchor.previousElementSibling === activeView.root;
-  if (alreadyMounted) return;
+  ensureObserver(picked.adapter);
+
+  // Same page, view already built: just make sure it is still in front of the (possibly re-created) list.
+  if (activeView !== null && activeView.url === location.href && activeView.root.isConnected) {
+    activeView.attach(anchor);
+    return;
+  }
 
   activeView?.dispose();
   for (const stray of document.querySelectorAll(`#${ROOT_ID}`)) stray.remove();
-  const view = new GroupedView(ctx, anchor);
+  const view = new GroupedView(picked.ctx, picked.adapter, anchor);
   activeView = view;
-  anchor.before(view.root);
+  view.attach(anchor);
   void view.init();
 }
 
@@ -376,25 +375,25 @@ function scheduleMount(): void {
   }, 100);
 }
 
-// GitHub navigates with Turbo (full reloads are not guaranteed). Re-run on every plausible signal;
-// mount() is idempotent so over-triggering is harmless.
-for (const eventName of ["turbo:load", "turbo:frame-load", "turbo:render"]) {
+// Full page loads are not guaranteed: the profile tab uses Turbo, the organization pages use GitHub's React
+// soft navigation. Re-run on every plausible signal; mount() is idempotent so over-triggering is harmless.
+for (const eventName of ["turbo:load", "turbo:frame-load", "turbo:render", "soft-nav:end"]) {
   document.addEventListener(eventName, scheduleMount);
 }
 window.addEventListener("popstate", scheduleMount);
 
-// Observe the profile's Turbo frame (where tab switches re-render) rather than the whole document; fall back to
-// top-level body children only, so unrelated GitHub pages don't pay for a subtree observer.
+// Watch only the container the current page re-renders (Turbo frame or <main>); elsewhere watch the body's direct
+// children only, so unrelated GitHub pages don't pay for a subtree observer.
 const observer = new MutationObserver(scheduleMount);
 let observed: Element | null = null;
-function ensureObserver(): void {
-  const frame = document.querySelector("turbo-frame#user-profile-frame");
-  const target = frame ?? document.body;
+function ensureObserver(adapter?: PageAdapter): void {
+  const scoped = adapter?.observeTarget() ?? null;
+  const target = scoped ?? document.body;
   if (target === observed) return;
   observer.disconnect();
-  observer.observe(target, { childList: true, subtree: target === frame });
+  observer.observe(target, { childList: true, subtree: scoped !== null });
   observed = target;
 }
-ensureObserver();
+ensureObserver(pickAdapter(location.href)?.adapter);
 
 mount();

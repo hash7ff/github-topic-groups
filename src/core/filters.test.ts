@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyFilter, EMPTY_FILTER, isFiltering, matchesFilter, matchesQuery, parseFilterFromUrl, sortRepos, urlWithout } from "./filters.ts";
+import { applyFilter, EMPTY_FILTER, isFiltering, matchesFilter, matchesQuery, parseFilterFromUrl, sortRepos, splitQuery, urlWithout } from "./filters.ts";
 import { groupRepos } from "./grouping.ts";
 import { repo } from "./fixtures.ts";
 
@@ -59,4 +59,17 @@ test("isFiltering ignores sort (ordering is not filtering)", () => {
   assert.equal(isFiltering(EMPTY_FILTER), false);
   assert.equal(isFiltering({ ...EMPTY_FILTER, sort: "updated" }), false);
   assert.equal(isFiltering({ ...EMPTY_FILTER, type: "private" }), true);
+});
+
+test("splitQuery folds GitHub's in-query qualifiers in and drops the ones we cannot apply", () => {
+  assert.deepEqual(splitQuery("hello"), { text: "hello", type: null, language: null });
+  assert.deepEqual(splitQuery("type:source api"), { text: "api", type: "source", language: null });
+  assert.deepEqual(splitQuery("language:TypeScript"), { text: "", type: null, language: "typescript" });
+  assert.deepEqual(splitQuery("archived:true api"), { text: "api", type: null, language: null }, "unknown qualifier dropped, not searched literally");
+});
+
+test("the organization page's q qualifiers reach the filter", () => {
+  const f = parseFilterFromUrl("https://github.com/orgs/hash7ff/repositories?q=type%3Asource+api");
+  assert.equal(f.type, "source");
+  assert.equal(f.q, "api");
 });

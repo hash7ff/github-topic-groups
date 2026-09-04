@@ -113,6 +113,42 @@ async function devicePoll(flowId: string): Promise<MsgResponse<DevicePoll>> {
   return ok({ done: true, login });
 }
 
+/** Accounts (the user plus organizations) where the Topic Folders app is installed. Cached for the session. */
+async function installedAccounts(force = false): Promise<string[]> {
+  if (!force) {
+    const cached = await storage.getInstalledAccounts();
+    if (cached) return cached;
+  }
+  const accounts = (await api.listInstallations())
+    .filter((i) => i.appSlug === null || i.appSlug === GITHUB_APP_SLUG)
+    .map((i) => (i.account ?? "").toLowerCase())
+    .filter((a) => a !== "");
+  await storage.setInstalledAccounts(accounts);
+  return accounts;
+}
+
+/**
+ * Decides whether we may act on `owner`'s repositories: either it is the signed-in user, or it is an account
+ * (typically an organization) where the app is installed. A personal access token is not installation-scoped,
+ * so it is allowed to reach organizations directly.
+ */
+async function resolveTarget(owner: string): Promise<{ kind: "user" | "org" } | ApiErrorInfo> {
+  const login = await resolveLogin();
+  if (owner.toLowerCase() === login.toLowerCase()) return { kind: "user" };
+  const auth = await storage.getAuth();
+  if (auth?.kind === "pat") return { kind: "org" };
+  const accounts = await installedAccounts();
+  if (accounts.includes(owner.toLowerCase())) return { kind: "org" };
+  const fresh = await installedAccounts(true); // the user may have just installed it
+  if (fresh.includes(owner.toLowerCase())) return { kind: "org" };
+  return {
+    kind: "not_installed",
+    status: 0,
+    message: `Topic Folders is not installed on ${owner}.`,
+    installUrl: GITHUB_APP_INSTALL_URL,
+  };
+}
+
 async function installations(): Promise<MsgResponse<InstallationsStatus>> {
   const auth = await storage.getAuth();
   if (!auth) return fail({ kind: "unauthorized", status: 0, message: "Not signed in." });
@@ -123,19 +159,14 @@ async function installations(): Promise<MsgResponse<InstallationsStatus>> {
 
 async function listRepos(owner: string, force: boolean): Promise<MsgResponse<ReposList>> {
   const login = await resolveLogin();
-  if (owner.toLowerCase() !== login.toLowerCase()) {
-    return fail({
-      kind: "unsupported",
-      status: 0,
-      message: `This version only groups your own repositories (signed in as ${login}, this page shows ${owner}).`,
-    });
-  }
+  const target = await resolveTarget(owner);
+  if ("message" in target) return fail(target);
   const cache = await storage.getRepoCache(owner);
   if (!force && cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
     return ok({ owner, login, repos: cache.repos, fetchedAt: cache.fetchedAt, fromCache: true });
   }
-  const repos = await api.listOwnRepos();
-  if (repos.length === 0) {
+  const repos = target.kind === "user" ? await api.listOwnRepos() : await api.listOrgRepos(owner);
+  if (repos.length === 0 && target.kind === "user") {
     // A GitHub App token only sees repositories the app is installed on: an empty list usually means "not installed yet".
     const auth = await storage.getAuth();
     if (auth?.kind === "github-app") {
@@ -174,10 +205,8 @@ function serializedWrite<T>(fn: () => Promise<T>): Promise<T> {
  * `prefs` is a snapshot taken once per user action so a settings change mid-operation cannot alter later items.
  */
 async function setProject(owner: string, repo: string, project: string | null, expect: string[] | null, prefs: Prefs): Promise<MsgResponse<SetProjectResult>> {
-  const login = await resolveLogin();
-  if (owner.toLowerCase() !== login.toLowerCase()) {
-    return fail({ kind: "unsupported", status: 0, message: `This version only changes your own repositories (signed in as ${login}).` });
-  }
+  const target = await resolveTarget(owner);
+  if ("message" in target) return fail(target);
   const cached = (await storage.getRepoCache(owner))?.repos.find((r) => r.name.toLowerCase() === repo.toLowerCase());
   if (cached?.archived) return fail({ kind: "validation", status: 0, message: `${repo} is archived (read-only on GitHub). Unarchive it first.` });
 

@@ -6,6 +6,7 @@ const AUTH_KEY = "gtf.auth";
 const LEGACY_TOKEN_KEY = "gtf.token"; // pre-M4.5 installs stored a bare PAT here
 const LOGIN_KEY = "gtf.login";
 const FLOW_KEY = "gtf.deviceflow";
+const ACCOUNTS_KEY = "gtf.installedAccounts";
 const repoCacheKey = (owner: string): string => `gtf.cache.repos.${owner.toLowerCase()}`;
 
 export type RepoCache = { repos: RepoSummary[]; fetchedAt: number };
@@ -50,6 +51,15 @@ export async function getLogin(): Promise<string | null> {
 }
 export async function setLogin(login: string): Promise<void> {
   await chrome.storage.session.set({ [LOGIN_KEY]: login });
+}
+
+export async function getInstalledAccounts(): Promise<string[] | null> {
+  const r = await chrome.storage.session.get(ACCOUNTS_KEY);
+  const v = r[ACCOUNTS_KEY];
+  return Array.isArray(v) ? (v as string[]) : null;
+}
+export async function setInstalledAccounts(accounts: string[]): Promise<void> {
+  await chrome.storage.session.set({ [ACCOUNTS_KEY]: accounts });
 }
 
 export async function getRepoCache(owner: string): Promise<RepoCache | null> {

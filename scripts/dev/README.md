@@ -23,3 +23,5 @@ Never reload or touch extensions other than ours; never use CDP ports other than
 - `verify-filters-and-bulk.cjs` — GitHub's own Find/Type/Language/Sort controls driving the grouped view, language colour dots, and the "Add repositories…" bulk move. Needs `$GTF_READ_TOKEN`.
 
 Note: run these one at a time. GitHub's repository *list* endpoint lags behind topic writes by a few seconds, so a script that starts right after another one wrote topics can load a stale list; the scripts wait for the list and topics endpoints to agree and clear the extension cache before starting.
+- `verify-org-page.cjs <extId>` — the grouped view on github.com/orgs/hash7ff/repositories: mount, create/move/delete against the gtf-org-test-* repos, survival across React re-render and soft navigation, and that the personal page still works.
+- `verify-org-not-installed.cjs` — an organization without the app installed must show the install link and leave GitHub's list visible.

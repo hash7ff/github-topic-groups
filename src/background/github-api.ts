@@ -22,6 +22,8 @@ export type GitHubApi = {
   whoami(): Promise<{ login: string }>;
   /** Every repository owned by the token's user (public + private), all pages. */
   listOwnRepos(): Promise<RepoSummary[]>;
+  /** Every repository of an organization the token can see, all pages. */
+  listOrgRepos(org: string): Promise<RepoSummary[]>;
   getTopics(owner: string, repo: string): Promise<string[]>;
   /** Full replacement: callers MUST pass the complete list (see core/topicsMerge.ts). */
   putTopics(owner: string, repo: string, names: readonly string[]): Promise<string[]>;
@@ -126,6 +128,21 @@ export function createGitHubApi(deps: { getToken: () => Promise<string | null>; 
     return { json, headers: res.headers };
   }
 
+  async function paginate(first: string): Promise<RepoSummary[]> {
+    const repos: RepoSummary[] = [];
+    let url: string | null = first;
+    for (let page = 0; url !== null && page < MAX_PAGES; page++) {
+      const { json, headers } = await request("GET", url);
+      if (!Array.isArray(json)) throw new GitHubApiError({ kind: "other", status: 200, message: "Unexpected repository list response." });
+      for (const raw of json) {
+        const r = toRepoSummary(raw);
+        if (r) repos.push(r);
+      }
+      url = parseLinkNext(headers.get("link"));
+    }
+    return repos;
+  }
+
   return {
     async whoami() {
       const { json } = await request("GET", "/user");
@@ -134,18 +151,10 @@ export function createGitHubApi(deps: { getToken: () => Promise<string | null>; 
       return { login };
     },
     async listOwnRepos() {
-      const repos: RepoSummary[] = [];
-      let url: string | null = "/user/repos?affiliation=owner&per_page=100&sort=full_name&direction=asc";
-      for (let page = 0; url !== null && page < MAX_PAGES; page++) {
-        const { json, headers } = await request("GET", url);
-        if (!Array.isArray(json)) throw new GitHubApiError({ kind: "other", status: 200, message: "Unexpected /user/repos response." });
-        for (const raw of json) {
-          const r = toRepoSummary(raw);
-          if (r) repos.push(r);
-        }
-        url = parseLinkNext(headers.get("link"));
-      }
-      return repos;
+      return paginate("/user/repos?affiliation=owner&per_page=100&sort=full_name&direction=asc");
+    },
+    async listOrgRepos(org) {
+      return paginate(`/orgs/${encodeURIComponent(org)}/repos?per_page=100&sort=full_name&direction=asc&type=all`);
     },
     async getTopics(owner, repo) {
       const { json } = await request("GET", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/topics`);

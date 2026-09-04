@@ -14,14 +14,38 @@ export const EMPTY_FILTER: GitHubFilter = { q: "", language: "", type: "", sort:
 const TYPES = new Set<string>(["public", "private", "source", "fork", "archived", "mirror", "template", "sponsorable"]);
 const SORTS = new Set<string>(["name", "updated", "stargazers"]);
 
+/**
+ * GitHub's organization page encodes filters inside `q` ("type:source rest of query"), while the profile tab uses
+ * separate parameters. Split qualifiers out of the free text so they are applied instead of matched literally.
+ */
+export function splitQuery(q: string): { text: string; type: RepoType | null; language: string | null } {
+  const words: string[] = [];
+  let type: RepoType | null = null;
+  let language: string | null = null;
+  for (const word of q.split(/\s+/).filter(Boolean)) {
+    const m = /^([a-z_]+):(.+)$/i.exec(word);
+    if (!m) {
+      words.push(word);
+      continue;
+    }
+    const key = (m[1] ?? "").toLowerCase();
+    const value = (m[2] ?? "").toLowerCase().replace(/^"|"$/g, "");
+    if (key === "language") language = value;
+    else if ((key === "type" || key === "is") && TYPES.has(value)) type = value as RepoType;
+    // any other qualifier is dropped: matching it as text would hide everything
+  }
+  return { text: words.join(" "), type, language };
+}
+
 export function parseFilterFromUrl(href: string): GitHubFilter {
   const p = new URL(href).searchParams;
   const type = (p.get("type") ?? "").toLowerCase();
   const sort = (p.get("sort") ?? "").toLowerCase();
+  const inQuery = splitQuery(p.get("q") ?? "");
   return {
-    q: p.get("q") ?? "",
-    language: p.get("language") ?? "",
-    type: TYPES.has(type) ? (type as RepoType) : "",
+    q: inQuery.text,
+    language: p.get("language") || inQuery.language || "",
+    type: TYPES.has(type) ? (type as RepoType) : (inQuery.type ?? ""),
     sort: SORTS.has(sort) ? (sort as RepoSort) : "",
   };
 }
