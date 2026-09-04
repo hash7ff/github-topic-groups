@@ -13,10 +13,22 @@ export function detectOrgRepositoriesPage(href: string): PageContext | null {
   return owner ? { owner, kind: "org" } : null;
 }
 
+/**
+ * The element our view goes in front of, and which we hide.
+ *
+ * GitHub wraps the list in a bordered box (`div[data-listview-repos-list]`) that also holds the repository count
+ * and the density switch. We anchor on that box rather than on the `ListView` container inside it: our view then
+ * sits outside GitHub's border instead of inside it, and hiding the box takes its border with it, so we never
+ * have to override GitHub's styles. The data attribute is used because the class on the same element carries a
+ * build hash (`ReposList-module__ReposListContainer__BrFiJ`) that changes on every GitHub deploy.
+ */
 function listContainer(): HTMLElement | null {
+  const box = document.querySelector<HTMLElement>("[data-listview-repos-list]");
+  if (box) return box;
+  // Fallbacks, in case that attribute disappears: the list container itself (works, but sits inside GitHub's
+  // border), then the visually hidden heading GitHub renders above the list.
   const byId = document.querySelector<HTMLElement>('[id$="-list-view-container"]');
   if (byId) return byId;
-  // Fallback: the visually hidden heading GitHub renders above the list.
   for (const h of document.querySelectorAll("h2")) {
     if (h.textContent?.trim() === "Repositories list") {
       const parent = h.closest<HTMLElement>("div");

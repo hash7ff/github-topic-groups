@@ -24,8 +24,10 @@ const EXT_ID = process.argv[2]; const P = 'topic-folders-';
     repos: [...document.querySelectorAll('#gtf-root .gtf-repo-name')].map(a => a.textContent),
     status: document.querySelector('#gtf-root .gtf-toolbar-status')?.textContent,
     error: document.querySelector('#gtf-root .gtf-error-panel')?.textContent?.trim().slice(0, 140) || null,
-    nativeHidden: document.querySelector('[id$="-list-view-container"]')?.hidden,
-    rootBeforeList: (() => { const r = document.getElementById('gtf-root'); const c = document.querySelector('[id$="-list-view-container"]'); return !!r && !!c && c.previousElementSibling === r; })(),
+    nativeHidden: (document.querySelector('[data-listview-repos-list]') || document.querySelector('[id$="-list-view-container"]'))?.hidden,
+    rootBeforeList: (() => { const r = document.getElementById('gtf-root'); const c = document.querySelector('[data-listview-repos-list]') || document.querySelector('[id$="-list-view-container"]'); return !!r && !!c && c.previousElementSibling === r; })(),
+    // Regression guard: our view must sit OUTSIDE GitHub's bordered list box, otherwise that border wraps our UI.
+    rootInsideBorderedBox: (() => { const r = document.getElementById('gtf-root'); const b = document.querySelector('[data-listview-repos-list]'); return !!(b && r && b.contains(r)); })(),
     chips: [...document.querySelectorAll('#gtf-root .gtf-chip')].map(a => a.textContent.replace('×', '').trim()),
   }));
   const waitReady = () => page.waitForFunction(() => document.querySelector('#gtf-root .gtf-group') || document.querySelector('#gtf-root .gtf-error-panel') || document.querySelector('#gtf-root .gtf-empty'), null, { timeout: 60000 });
