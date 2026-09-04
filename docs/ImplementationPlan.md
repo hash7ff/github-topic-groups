@@ -211,7 +211,7 @@ v0.1.1 の後、田中さんの判断で以下を確定した。
 | 並び順・入れ子 | **設計だけ残す** | Topic 名に符号化するしかなく、一度使い始めると取り消せない。`src/core/topic.ts` に拡張点をコメントで明示（変換は 2 関数に集約済みで、UI と書き込み経路は Topic 文字列を解釈しない） |
 | ドラッグ&ドロップ | **不採用** | 現状 2 クリックで足りる |
 | 全 Organization 横断ダッシュボード | **不採用** | 各 Organization 内で整理できれば十分 |
-| Organization 対応 | 公開後に要望次第（§5.7 に実地調査） | API はほぼ無償、ページが React で足場が無いのが本体のコスト |
+| Organization 対応 | 公開後の着手候補（§5.7 に実地調査） | API はほぼ無償。ページは React だが意味論的な足場と soft-nav イベントが在り、当初評価ほど高くない |
 | ローカル別名 | 保留 | 匿名 Topic（`topic-folders-c01`）の表示名をブラウザ内に持つ案。同期しないので PC を変えると符号のまま |
 | 一括処理の再起動耐性 | 保留 | Port 接続中は Service Worker が延命される。実測 1 件約 1.3 秒なので 109 件で約 2 分。初期整理で落ちなければ不要 |
 
@@ -225,17 +225,16 @@ v0.1.1 の後、田中さんの判断で以下を確定した。
 - 実測（2026-09-04、App を `hash7ff` Org に未インストールの状態）: 公開 Org リポの Topics 取得は 200 で成功、**書き込みは 403 `Resource not accessible by integration`／`x-accepted-github-permissions: administration=write`**。※取得した値をそのまま書き戻す無害な試行で、内容は変えていない。
 - 結論: 「自分の Org だけ」に絞っても実質失うものは無い。外部 Org はどのみち「インストールを依頼してください」の表示になる。
 
-**技術的な難所はページ側**
-- 個人のリポジトリ一覧はサーバー描画で `#user-repositories-list` という安定した足場がある（v0.1 はこれに依存）。
-- `github.com/orgs/<org>/repositories` は **React アプリ**。`#user-repositories-list` も turbo-frame も `data-hovercard-type="repository"` も無く、リスト周辺の id は `_R_1mk5_-list-view-container` のような React 生成値で安定しない。`data-testid` はページ全体で 15 個、リスト関連は 0。安定した足場が存在しない。
-- したがって挿入位置は Primer ListView の id 接尾辞や構造に頼ることになり、「GitHub の DOM に依存しない」という設計原則（§19）から外れる。再描画のたびに再適用も要る。
+**技術的な難所はページ側（2026-09-04 に実測して当初評価を訂正）**
 
-**API 側はほぼ無償**
-- 現在のアプリトークンで `/user/repos?affiliation=owner,collaborator,organization_member` は Org のリポも返す（実測 52 件）。`/orgs/{org}/repos` も 200。
-- 必要な変更は、書き込み経路の owner チェックを「ページの owner かつ App がインストール済み」に緩めることと、Org ごとのインストール検出（`/user/installations` に含まれる）程度。
-- 補足: `/user/orgs` は現在の権限では 0 件を返す。ただし「今見ているページの Org」だけを対象にすれば列挙は不要。
+当初「安定した足場が存在しない」と書いたのは**誤り**だった。id と `data-testid` しか見ておらず、ARIA と見出しを確認していなかった。実測した事実:
 
-**見積もりと判断**: ロジックと API で 1 セッション程度、React ページへの差し込みと安定化で 2〜3 セッション、加えて壊れ続けるリスクと、複数リポを持つ検証用 Org が必要（`hash7ff` は 1 リポ）。**公開を優先し、要望が出てから着手する。**
+- **足場は在る（意味論的なもの）**: `main section`（`aria-label` は選択中のビュー名。既定は "All" なので**文字列 "All" で一致させてはいけない**）、`aside[aria-label="Repository filters"]`、`search[aria-label="Search repositories"]`、sr-only の `h2`「Repositories list」、`[id$="-list-view-container"]`、`ul[class^="ListView-module__ul"]`。`q` や `type` を変えても、これらは変わらなかった。
+- **挿入したノードは React の再描画と soft navigation を生き延びる**: `<section>` の兄弟として差し込んだ要素は、フィルタ変更後も戻る操作の後も残っていた（React は自分が作っていないノードを消さない）。
+- **消えるのは「隠した」状態のほう**: 一覧コンテナは再描画のたびに**別要素に作り替えられる**ので、`hidden` 属性は失われる。隠す処理は再描画ごとに当て直すか、安定したセレクタに対する CSS で行う必要がある。
+- **遷移の signal は在る**: このページは Turbo ではないが、GitHub は **`soft-nav:start` / `soft-nav:end`** というイベントを発火し、`history.pushState` と `popstate` も観測できた。個人ページの `turbo:*` に相当する再マウントの契機として使える。
+
+したがって残るコストは「足場探し」ではなく **SPA のライフサイクル対応**（再描画ごとの再適用と soft navigation での再マウント）であり、当初見積もり（ページ側 2〜3 セッション）は**過大**。1〜2 セッション程度が妥当。
 
 **戦略的な含意**: Org ページが既に React で個人ページがまだサーバー描画ということは、GitHub が移行途中である可能性が高い。個人ページが React 化されたとき、現在の足場は消える。その場合この拡張は「何もしない」だけで GitHub の操作は壊さない設計（§19）だが、機能は止まる。DOM 依存を最小に保つ現方針の妥当性を裏づけると同時に、いずれ React ページへの差し込み手法が必要になることを示す。
 
