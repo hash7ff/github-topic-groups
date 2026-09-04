@@ -236,6 +236,26 @@ v0.1.1 の後、田中さんの判断で以下を確定した。
 
 したがって残るコストは「足場探し」ではなく **SPA のライフサイクル対応**（再描画ごとの再適用と soft navigation での再マウント）であり、当初見積もり（ページ側 2〜3 セッション）は**過大**。1〜2 セッション程度が妥当。
 
+**共通化の余地（2026-09-04 実測）**
+
+実装コードの行数（テスト除く）: `src/core` 1,166 / `src/background` 668 / `src/content/ui` 640 / `src/content/content.ts` 371 / `src/options` 176 / その他 34。
+このうち**ページ固有なのは `content.ts` の約 40 行だけ**（`ANCHOR_ID` 定数、`detectRepositoriesPage`、`anchor.hidden` の 2 箇所、末尾のイベント登録と MutationObserver）。
+グループ化・ダイアログ・書き込み・フィルタ・認証はすべてページに依存していない。
+
+したがって Org 対応は「2 セット目のアプリ」ではなく、**ページアダプタ 1 枚の追加**で足りる:
+
+```
+src/content/pages/
+  types.ts        PageAdapter = { detect(href), findAnchor(), setNativeListHidden(b), onNavigate(cb) }
+  userProfile.ts  現行実装（#user-repositories-list / turbo:* / popstate）
+  orgRepos.ts     新規（main section / soft-nav:start,end / 再描画ごとに非表示を当て直す）
+```
+
+`content.ts` は URL でアダプタを選ぶだけ、UI とダイアログは無改変。API 側は `listOwnRepos()` → `listRepos(owner)`（`/orgs/{org}/repos`）と、書き込み時の owner チェックを「login と一致」から「`/user/installations` に含まれる account」へ広げるだけ。新規はアダプタ 80〜120 行程度の見込み。
+
+**権限モデル（公式ドキュメントで確認）**: user access token は「App が持つ権限」と「その人自身が持つ権限」の**積**。App を Org に入れても、本人がそのリポの admin でなければ Topics は変更できない。自分の Org ではオーナーなので問題ない。
+なお App 未インストールの Org でも**公開リポは読める**ので、中途半端に一部だけ表示することは可能。混乱を招くので「この Organization にインストールしてください」の表示に倒すのが妥当。
+
 **戦略的な含意**: Org ページが既に React で個人ページがまだサーバー描画ということは、GitHub が移行途中である可能性が高い。個人ページが React 化されたとき、現在の足場は消える。その場合この拡張は「何もしない」だけで GitHub の操作は壊さない設計（§19）だが、機能は止まる。DOM 依存を最小に保つ現方針の妥当性を裏づけると同時に、いずれ React ページへの差し込み手法が必要になることを示す。
 
 ## 6. リスクと対策
