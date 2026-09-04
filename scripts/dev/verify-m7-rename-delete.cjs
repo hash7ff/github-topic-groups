@@ -13,7 +13,7 @@ const topics = async () => ({ api: (await gh('/repos/mutsuyuki/gtf-test-api/topi
   const dismissFlash = () => page.evaluate(() => { const f = document.querySelector('#gtf-root .gtf-flash'); if (f) f.hidden = true; });
   const dlg = () => page.locator('dialog.gtf-dialog[open]');
   const menuOf = (key) => page.locator(`#gtf-root .gtf-group[data-key="${key}"] .gtf-group-menu`);
-  const P = 'topic-folders-';
+  const P = 'topic-groups-';
 
   await page.goto('https://github.com/mutsuyuki?tab=repositories', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#gtf-root .gtf-group', { timeout: 60000 });
@@ -36,9 +36,9 @@ const topics = async () => ({ api: (await gh('/repos/mutsuyuki/gtf-test-api/topi
   await dlg().locator('input.gtf-input').fill('Client A'); await dlg().locator('.gtf-btn-primary').click(); const f2 = await waitFlash(); await dismissFlash();
   console.log('2 RENAME BACK', JSON.stringify({ flash: f2, groups: await groups() }));
 
-  // Case 5: temp project with firmware, then delete it
+  // Case 5: temp group with firmware, then delete it
   await page.locator(`#gtf-root li.gtf-repo[data-repo="gtf-test-firmware"] .gtf-repo-actions button`).click();
-  await dlg().locator('.gtf-menu-item').filter({ hasText: /New project/ }).click(); await dlg().waitFor();
+  await dlg().locator('.gtf-menu-item').filter({ hasText: /New group/ }).click(); await dlg().waitFor();
   await dlg().locator('input[type=text].gtf-input').fill('Temp'); await dlg().locator('.gtf-btn-primary').click(); await waitFlash(); await dismissFlash();
   const mid = await groups();
   await menuOf(P + 'temp').click(); await dlg().waitFor(); await dlg().locator('.gtf-menu-item').filter({ hasText: /Delete/ }).click(); await dlg().waitFor();

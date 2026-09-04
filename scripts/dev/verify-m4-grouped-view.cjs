@@ -10,7 +10,7 @@ const snapshot = () => ({
   status: document.querySelector('#gtf-root .gtf-toolbar-status')?.textContent,
   error: document.querySelector('#gtf-root .gtf-error-panel')?.textContent?.trim().slice(0, 160) || null,
   mode: document.querySelector('#gtf-root .gtf-seg-btn[aria-pressed="true"]')?.textContent,
-  firstRows: [...document.querySelectorAll('#gtf-root .gtf-group[data-key="topic-folders-client-a"] .gtf-repo')].map(r => ({ name: r.querySelector('.gtf-repo-name')?.textContent, href: r.querySelector('.gtf-repo-name')?.getAttribute('href'), labels: [...r.querySelectorAll('.gtf-label')].map(l => l.textContent), meta: r.querySelector('.gtf-repo-meta')?.textContent })),
+  firstRows: [...document.querySelectorAll('#gtf-root .gtf-group[data-key="topic-groups-client-a"] .gtf-repo')].map(r => ({ name: r.querySelector('.gtf-repo-name')?.textContent, href: r.querySelector('.gtf-repo-name')?.getAttribute('href'), labels: [...r.querySelectorAll('.gtf-label')].map(l => l.textContent), meta: r.querySelector('.gtf-repo-meta')?.textContent })),
 });
 (async () => {
   const browser = await chromium.connectOverCDP('http://localhost:9224');
@@ -23,11 +23,11 @@ const snapshot = () => ({
   await page.screenshot({ path: SP + '/m4_grouped.png', clip: { x: 400, y: 90, width: 920, height: 760 } });
 
   // collapse Client A, reload, expect still collapsed; expand again
-  await page.click('#gtf-root .gtf-group[data-key="topic-folders-client-a"] .gtf-group-header'); await page.waitForTimeout(300);
+  await page.click('#gtf-root .gtf-group[data-key="topic-groups-client-a"] .gtf-group-header'); await page.waitForTimeout(300);
   const c1 = await page.evaluate(snapshot);
   await page.reload({ waitUntil: 'domcontentloaded' }); await waitReady(); await page.waitForTimeout(300);
   const c2 = await page.evaluate(snapshot);
-  await page.click('#gtf-root .gtf-group[data-key="topic-folders-client-a"] .gtf-group-header'); await page.waitForTimeout(300);
+  await page.click('#gtf-root .gtf-group[data-key="topic-groups-client-a"] .gtf-group-header'); await page.waitForTimeout(300);
   const c3 = await page.evaluate(snapshot);
   console.log('2 COLLAPSE', JSON.stringify({ afterClick: c1.groups[0], afterReload: c2.groups[0], afterExpand: c3.groups[0] }));
 

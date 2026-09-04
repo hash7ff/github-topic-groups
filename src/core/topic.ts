@@ -2,20 +2,20 @@
 //
 // EXTENSION POINT — ordering and nesting.
 // A GitHub topic is a flat string, so anything beyond a name has to be encoded in it (for example
-// `topic-folders-10-client-a` for a sort key, or a separator for `Client A / Backend`). Every conversion between a
+// `topic-groups-10-client-a` for a sort key, or a separator for `Client A / Backend`). Every conversion between a
 // topic and what the user sees goes through exactly two functions here: `displayNameFromTopic` (topic -> label) and
-// `normalizeProjectName` (label -> topic), with `isProjectTopic` deciding what counts as a folder. Grouping, the
+// `normalizeGroupName` (label -> topic), with `isGroupTopic` deciding what counts as a folder. Grouping, the
 // dialogs and the write path never parse topic strings themselves, so a future convention can be added by changing
 // these functions and returning richer values, without touching the UI or the write path.
 // Deliberately NOT done in v0.1: such a convention leaks into every topic name and cannot be undone for users who
 // already tagged repositories, so it needs real usage evidence first.
 
 /**
- * Default prefix. `project-` was rejected because thousands of public repositories already carry topics such as
- * `project-management` / `project-euler` (counted 2026-09-03), which the extension would misread as folders and could
- * even delete via "Delete project". The prefix is configurable per browser (Prefs.prefix).
+ * Default prefix. `group-` was rejected because thousands of public repositories already carry topics such as
+ * `group-management` / `group-euler` (counted 2026-09-03), which the extension would misread as folders and could
+ * even delete via "Delete group". The prefix is configurable per browser (Prefs.prefix).
  */
-export const DEFAULT_PREFIX = "topic-folders-";
+export const DEFAULT_PREFIX = "topic-groups-";
 /** GitHub: topics are lowercase letters, numbers and hyphens, 50 chars max, 20 per repo (verified 2026-09-03). */
 export const TOPIC_MAX_LENGTH = 50;
 export const TOPICS_PER_REPO_MAX = 20;
@@ -37,15 +37,15 @@ export function maxNameLength(prefix: string): number {
   return TOPIC_MAX_LENGTH - prefix.length;
 }
 
-export function isProjectTopic(topic: string, prefix: string = DEFAULT_PREFIX): boolean {
+export function isGroupTopic(topic: string, prefix: string = DEFAULT_PREFIX): boolean {
   return topic.startsWith(prefix) && topic.length > prefix.length;
 }
 
-export function projectTopics(topics: readonly string[], prefix: string = DEFAULT_PREFIX): string[] {
-  return topics.filter((t) => isProjectTopic(t, prefix));
+export function groupTopics(topics: readonly string[], prefix: string = DEFAULT_PREFIX): string[] {
+  return topics.filter((t) => isGroupTopic(t, prefix));
 }
 
-/** `topic-folders-client-a` -> `Client A`. Lossy on purpose (the topic stays the source of truth). */
+/** `topic-groups-client-a` -> `Client A`. Lossy on purpose (the topic stays the source of truth). */
 export function displayNameFromTopic(topic: string, prefix: string = DEFAULT_PREFIX): string {
   const slug = topic.startsWith(prefix) ? topic.slice(prefix.length) : topic;
   return slug
@@ -55,7 +55,7 @@ export function displayNameFromTopic(topic: string, prefix: string = DEFAULT_PRE
     .join(" ");
 }
 
-export type NormalizedProjectName =
+export type NormalizedGroupName =
   | { ok: true; topic: string; slug: string }
   | { ok: false; error: string; slug: string };
 
@@ -63,22 +63,22 @@ export type NormalizedProjectName =
  * `Client A` -> `<prefix>client-a`. NFKC-normalises, lowercases, collapses anything that is not [a-z0-9] into single hyphens.
  * Characters GitHub topics cannot hold (e.g. Japanese) are dropped; the caller must show the resulting topic before writing.
  */
-export function normalizeProjectName(displayName: string, prefix: string = DEFAULT_PREFIX): NormalizedProjectName {
+export function normalizeGroupName(displayName: string, prefix: string = DEFAULT_PREFIX): NormalizedGroupName {
   const slug = displayName
     .normalize("NFKC")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
   if (slug.length === 0) {
-    return { ok: false, slug, error: "Project name must contain letters (a-z) or numbers." };
+    return { ok: false, slug, error: "Group name must contain letters (a-z) or numbers." };
   }
   const max = maxNameLength(prefix);
   if (slug.length > max) {
-    return { ok: false, slug, error: `Project name is too long (max ${max} characters after normalisation).` };
+    return { ok: false, slug, error: `Group name is too long (max ${max} characters after normalisation).` };
   }
   const topic = prefix + slug;
   if (!isValidTopic(topic)) {
-    return { ok: false, slug, error: "Project name produces an invalid GitHub topic." };
+    return { ok: false, slug, error: "Group name produces an invalid GitHub topic." };
   }
   return { ok: true, topic, slug };
 }

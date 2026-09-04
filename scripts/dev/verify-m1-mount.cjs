@@ -20,7 +20,7 @@ const probe = () => ({
   const ctx = browser.contexts()[0];
   const page = await ctx.newPage();
   const logs = [];
-  page.on('console', m => { if (/gtf|topic folders/i.test(m.text())) logs.push(m.type() + ': ' + m.text()); });
+  page.on('console', m => { if (/gtf|topic groups/i.test(m.text())) logs.push(m.type() + ': ' + m.text()); });
   page.on('pageerror', e => logs.push('pageerror: ' + e.message));
   await page.goto('https://github.com/mutsuyuki?tab=repositories', { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForSelector('#user-repositories-list', { timeout: 15000 });

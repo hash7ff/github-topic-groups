@@ -1,13 +1,13 @@
 import { h, clear } from "./h.ts";
 import { openDialog } from "./dialog.ts";
-import { normalizeProjectName } from "../../core/topic.ts";
+import { normalizeGroupName } from "../../core/topic.ts";
 import { byName } from "../../core/grouping.ts";
 import type { RepoSummary } from "../../core/types.ts";
 
 type PickerBase = {
   repos: readonly RepoSummary[];
   preselected: readonly string[];
-  /** Repositories with several folder topics: excluded here, they must be resolved with Fix first. */
+  /** Repositories with several group topics: excluded here, they must be resolved with Fix first. */
   conflicted: ReadonlySet<string>;
 };
 
@@ -56,8 +56,8 @@ function selectAllRow(selected: Set<string>, repos: readonly RepoSummary[], rere
   );
 }
 
-/** Create a project (or, if the name matches an existing one, move the chosen repositories into it). */
-export function openNewProjectDialog(
+/** Create a group (or, if the name matches an existing one, move the chosen repositories into it). */
+export function openNewGroupDialog(
   opts: PickerBase & {
     prefix: string;
     existingTopics: ReadonlySet<string>;
@@ -65,40 +65,40 @@ export function openNewProjectDialog(
     onCreate(topic: string, displayName: string, repoNames: string[], dismissNotice: boolean): Promise<void>;
   },
 ): void {
-  const dlg = openDialog("New project", { className: "gtf-dialog-wide" });
+  const dlg = openDialog("New group", { className: "gtf-dialog-wide" });
   const selected = new Set(opts.preselected);
   const available = opts.repos.filter((r) => !opts.conflicted.has(r.name));
 
-  const nameInput = h("input", { className: "gtf-input", type: "text", placeholder: "e.g. Client A", ariaLabel: "Project name" });
+  const nameInput = h("input", { className: "gtf-input", type: "text", placeholder: "e.g. Client A", ariaLabel: "Group name" });
   const preview = h("p", { className: "gtf-preview" });
   const notice = opts.showPrivacyNotice
     ? h(
         "div",
         { className: "gtf-notice gtf-notice-attention" },
         h("strong", {}, "Important: "),
-        "GitHub topic names are public even when used with private repositories. Do not use confidential client or project names as project topics. ",
+        "GitHub topic names are public even when used with private repositories. Do not use confidential client or group names as group topics. ",
         h("label", { className: "gtf-check" }, h("input", { type: "checkbox", id: "gtf-dismiss-notice" }), " Don't show this again"),
       )
     : null;
   const count = h("span", { className: "gtf-muted" });
-  const confirm = h("button", { className: "gtf-btn gtf-btn-primary", type: "button" }, "Create project");
+  const confirm = h("button", { className: "gtf-btn gtf-btn-primary", type: "button" }, "Create group");
   const error = h("p", { className: "gtf-error", hidden: true });
 
   const picker = repoPicker({ repos: available, selected, onChange: () => update() });
   const update = () => {
-    const res = normalizeProjectName(nameInput.value, opts.prefix);
+    const res = normalizeGroupName(nameInput.value, opts.prefix);
     const existing = res.ok && opts.existingTopics.has(res.topic);
     if (nameInput.value.trim() === "") {
       preview.textContent = `Topic: ${opts.prefix}…`;
       preview.className = "gtf-preview";
     } else if (res.ok) {
-      preview.textContent = `Topic: ${res.topic}${existing ? "  (existing project — the repositories below move into it)" : ""}`;
+      preview.textContent = `Topic: ${res.topic}${existing ? "  (existing group — the repositories below move into it)" : ""}`;
       preview.className = "gtf-preview";
     } else {
       preview.textContent = res.error;
       preview.className = "gtf-preview gtf-error";
     }
-    confirm.textContent = existing ? `Move to ${nameInput.value.trim()}` : "Create project";
+    confirm.textContent = existing ? `Move to ${nameInput.value.trim()}` : "Create group";
     count.textContent = `${selected.size} repositor${selected.size === 1 ? "y" : "ies"} selected`;
     confirm.disabled = !(res.ok && selected.size > 0);
   };
@@ -109,7 +109,7 @@ export function openNewProjectDialog(
 
   nameInput.addEventListener("input", update);
   confirm.addEventListener("click", async () => {
-    const res = normalizeProjectName(nameInput.value, opts.prefix);
+    const res = normalizeGroupName(nameInput.value, opts.prefix);
     if (!res.ok || selected.size === 0) return;
     confirm.disabled = true;
     const label = confirm.textContent;
@@ -128,7 +128,7 @@ export function openNewProjectDialog(
   });
 
   dlg.body.append(
-    h("label", { className: "gtf-field" }, h("span", { className: "gtf-field-label" }, "Project name"), nameInput),
+    h("label", { className: "gtf-field" }, h("span", { className: "gtf-field-label" }, "Group name"), nameInput),
     preview,
     ...(notice ? [notice] : []),
     h("div", { className: "gtf-field-label" }, "Repositories"),
@@ -143,17 +143,17 @@ export function openNewProjectDialog(
   nameInput.focus();
 }
 
-/** Move several repositories into an existing project in one go. */
+/** Move several repositories into an existing group in one go. */
 export function openAddRepositoriesDialog(
   opts: PickerBase & {
-    projectName: string;
+    groupName: string;
     memberNames: ReadonlySet<string>;
     onAdd(repoNames: string[]): Promise<void>;
   },
 ): void {
-  const dlg = openDialog(`Add repositories to ${opts.projectName}`, { className: "gtf-dialog-wide" });
+  const dlg = openDialog(`Add repositories to ${opts.groupName}`, { className: "gtf-dialog-wide" });
   const selected = new Set<string>();
-  // Members are already in the folder; removing one is "Move to… → Ungrouped" on its row.
+  // Members are already in the group; removing one is "Move to… → Ungrouped" on its row.
   const available = opts.repos.filter((r) => !opts.conflicted.has(r.name) && !opts.memberNames.has(r.name));
 
   const count = h("span", { className: "gtf-muted" });
@@ -187,8 +187,8 @@ export function openAddRepositoriesDialog(
 
   dlg.body.append(
     available.length === 0
-      ? h("p", { className: "gtf-empty" }, "Every eligible repository is already in this project.")
-      : h("p", { className: "gtf-muted" }, "Repositories already in this project are not listed. To take one out, use “Move to…” on its row."),
+      ? h("p", { className: "gtf-empty" }, "Every eligible repository is already in this group.")
+      : h("p", { className: "gtf-muted" }, "Repositories already in this group are not listed. To take one out, use “Move to…” on its row."),
     picker.filter,
     selectAllRow(selected, available, rerender),
     picker.list,

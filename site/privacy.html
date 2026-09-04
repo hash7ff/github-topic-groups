@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Privacy Policy — GitHub Topic Folders</title>
+  <title>Privacy Policy — Topic Groups for GitHub</title>
   <link rel="icon" href="icon128.png">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -13,9 +13,9 @@
     <img src="icon128.png" alt="">
     <h1>Privacy Policy</h1>
   </header>
-  <p class="lead">GitHub Topic Folders (Chrome extension) · Effective 2026-09-03, last updated 2026-09-03</p>
+  <p class="lead">Topic Groups for GitHub (Chrome extension) · Effective 2026-09-03, last updated 2026-09-03</p>
 
-  <p>This policy describes what the GitHub Topic Folders browser extension ("the extension") does with data.
+  <p>This policy describes what the Topic Groups for GitHub browser extension ("the extension") does with data.
     The extension is developed and published by <strong>HASH7FF LLC (合同会社HASH7FF)</strong>, Tokyo, Japan
     ("we"). Contact: <a href="mailto:contact@hash7ff.com">contact@hash7ff.com</a>.</p>
 
@@ -32,14 +32,14 @@
     <li><strong>GitHub credentials.</strong> Either a personal access token you paste into the extension's settings, or an access token and refresh token obtained when you use "Sign in with GitHub" (GitHub's device authorization flow). The credential is stored in the browser's extension storage (<code>chrome.storage.local</code>) on your device, with access restricted to the extension's trusted contexts (its service worker and settings page). It is sent to <code>api.github.com</code> (and, for sign-in and token refresh, <code>github.com</code>) to authenticate requests, and nowhere else. It is never exposed to web pages and never logged.</li>
     <li><strong>Repository metadata.</strong> Names, visibility, descriptions, languages, update times and topics of the repositories you own or that belong to an organization whose repository page you open, and your GitHub login name, fetched from the GitHub API. This is cached in the browser's session storage to avoid repeated requests and is discarded when the browser closes.</li>
     <li><strong>Write journal.</strong> Before each topic change the extension records, locally in <code>chrome.storage.local</code>, the repository name and its topics before and after the change (the last 200 entries, including dry runs). This exists so a mistake can be traced and undone by hand. It is never transmitted.</li>
-    <li><strong>Preferences.</strong> Which folders are collapsed, whether the grouped or original view is shown, the folder-topic prefix, and the dry-run setting. Stored locally in the browser.</li>
+    <li><strong>Preferences.</strong> Which groups are collapsed, whether the grouped or original view is shown, the group-topic prefix, and the dry-run setting. Stored locally in the browser.</li>
   </ul>
   <p>The extension does not collect or store your name, email address, browsing history, or any data from web pages other than the GitHub repositories page it operates on.</p>
 
   <h2>What the extension does on GitHub</h2>
   <p>The extension calls only these GitHub REST API endpoints: <code>GET /user</code>, <code>GET /user/repos</code>, <code>GET /orgs/{org}/repos</code>, <code>GET /user/installations</code>,
     <code>GET /repos/{owner}/{repo}/topics</code> and <code>PUT /repos/{owner}/{repo}/topics</code>, plus GitHub's OAuth device-flow endpoints on <code>github.com</code> for sign-in and token refresh.
-    Writes happen only in response to an action you take (creating, moving, renaming or deleting a project, or fixing a conflict) and replace the repository's topic list while preserving every topic that does not start with the folder prefix you configured (default <code>topic-folders-</code>).
+    Writes happen only in response to an action you take (creating, moving, renaming or deleting a group, or fixing a conflict) and replace the repository's topic list while preserving every topic that does not start with the group prefix you configured (default <code>topic-groups-</code>).
     Because GitHub's topics API replaces the whole list, a topic added by someone else in the fraction of a second between the extension reading and writing the list could be lost; the extension re-reads the list immediately before each write to keep that window as small as possible.
     The extension cannot create, delete, or otherwise modify repositories.</p>
   <p>Please note that <strong>GitHub topic names are public</strong>, even on private repositories. The extension warns about this; avoid confidential names.</p>
@@ -70,7 +70,7 @@
   <div lang="ja">
     <p>本拡張機能は GitHub（api.github.com および github.com）とのみ通信し、当社（合同会社HASH7FF）はサーバーを運用せず、利用者のデータを一切受け取りません。解析・トラッキング・広告・第三者サービスはありません。</p>
     <p>GitHub の認証情報（貼り付けたトークン、または「Sign in with GitHub」で取得したトークン）はブラウザ内の拡張機能ストレージにのみ保存され、GitHub への認証にのみ使われます。Web ページに渡さず、ログにも出力しません。リポジトリ情報はブラウザのセッションストレージに一時保存され、ブラウザ終了時に破棄されます。</p>
-    <p>本拡張機能が GitHub 上で変更するのはリポジトリの Topics のみで、利用者が明示的に操作したときに限ります。設定した接頭辞（既定 <code>topic-folders-</code>）で始まらない Topic は保持します。変更前後の Topic はブラウザ内の記録（最新 200 件）に残し、送信はしません。リポジトリの作成・削除はできません。GitHub の Topic 名はプライベートリポジトリでも公開情報であることにご注意ください。</p>
+    <p>本拡張機能が GitHub 上で変更するのはリポジトリの Topics のみで、利用者が明示的に操作したときに限ります。設定した接頭辞（既定 <code>topic-groups-</code>）で始まらない Topic は保持します。変更前後の Topic はブラウザ内の記録（最新 200 件）に残し、送信はしません。リポジトリの作成・削除はできません。GitHub の Topic 名はプライベートリポジトリでも公開情報であることにご注意ください。</p>
     <p>設定画面の「Clear token」または拡張機能のアンインストールで保存データはすべて削除されます。お問い合わせ: contact@hash7ff.com</p>
   </div>
 

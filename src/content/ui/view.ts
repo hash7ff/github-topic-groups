@@ -1,6 +1,6 @@
 // Rendering of the grouped view. Pure DOM construction from state; all text goes through textContent (see h.ts).
 import { h, clear } from "./h.ts";
-import type { Grouped, ProjectGroup } from "../../core/grouping.ts";
+import type { Grouped, RepoGroup } from "../../core/grouping.ts";
 import type { RepoSummary, ApiErrorInfo } from "../../core/types.ts";
 import { UNGROUPED_KEY } from "../../core/messages.ts";
 import { displayNameFromTopic } from "../../core/topic.ts";
@@ -16,8 +16,8 @@ export type ViewActions = {
   retry(): void;
   openSettings(): void;
   moveRepo(repoName: string): void;
-  newProject(): void;
-  projectMenu(topic: string): void;
+  newGroup(): void;
+  groupMenu(topic: string): void;
   fixConflict(repoName: string): void;
 };
 
@@ -48,7 +48,7 @@ export function buildToolbar(actions: ViewActions): { toolbar: HTMLElement; stat
     { className: "gtf-toolbar" },
     seg,
     search,
-    h("button", { className: "gtf-btn", type: "button", onClick: () => actions.newProject() }, "New project"),
+    h("button", { className: "gtf-btn", type: "button", onClick: () => actions.newGroup() }, "New group"),
     h("button", { className: "gtf-btn", type: "button", title: "Reload repositories from GitHub", onClick: () => actions.refresh() }, "Refresh"),
     status,
   );
@@ -94,7 +94,7 @@ export function repoRow(repo: RepoSummary, extra?: HTMLElement, actions?: ViewAc
   const moveBtn = actions
     ? h(
         "button",
-        { className: "gtf-btn", type: "button", disabled: repo.archived, title: repo.archived ? "Archived repositories are read-only on GitHub" : "Move this repository to another project", onClick: () => actions.moveRepo(repo.name) },
+        { className: "gtf-btn", type: "button", disabled: repo.archived, title: repo.archived ? "Archived repositories are read-only on GitHub" : "Move this repository to another group", onClick: () => actions.moveRepo(repo.name) },
         "Move to…",
       )
     : null;
@@ -131,7 +131,7 @@ function groupSection(key: string, name: string, repos: readonly RepoSummary[], 
     "div",
     { className: "gtf-group-head" },
     header,
-    withMenu ? h("button", { className: "gtf-btn gtf-group-menu", type: "button", title: "Rename or delete this project", ariaLabel: `Project menu for ${name}`, onClick: () => actions.projectMenu(key) }, "…") : null,
+    withMenu ? h("button", { className: "gtf-btn gtf-group-menu", type: "button", title: "Rename or delete this group", ariaLabel: `Group menu for ${name}`, onClick: () => actions.groupMenu(key) }, "…") : null,
   );
   return h("section", { className: `gtf-group ${className}`.trim(), dataset: { key } }, head, list);
 }
@@ -144,7 +144,7 @@ function conflictSection(grouped: Grouped, prefix: string, actions: ViewActions)
       h(
         "span",
         { className: "gtf-conflict-cell" },
-        h("span", { className: "gtf-conflict-note" }, `Multiple folder topics: ${c.topics.map((t) => displayNameFromTopic(t, prefix)).join(", ")}`),
+        h("span", { className: "gtf-conflict-note" }, `Multiple group topics: ${c.topics.map((t) => displayNameFromTopic(t, prefix)).join(", ")}`),
         h("button", { className: "gtf-btn", type: "button", onClick: () => actions.fixConflict(c.repo.name) }, "Fix"),
       ),
     ),
@@ -161,14 +161,14 @@ function conflictSection(grouped: Grouped, prefix: string, actions: ViewActions)
 export function renderGroups(body: HTMLElement, grouped: Grouped, collapsed: Record<string, boolean>, searching: boolean, prefix: string, actions: ViewActions): void {
   clear(body);
   const isCollapsed = (key: string) => !searching && collapsed[key] === true;
-  const total = grouped.projects.reduce((n, p) => n + p.repos.length, 0) + grouped.ungrouped.length + grouped.conflicts.length;
+  const total = grouped.groups.reduce((n, p) => n + p.repos.length, 0) + grouped.ungrouped.length + grouped.conflicts.length;
   if (total === 0) {
     body.append(h("p", { className: "gtf-empty" }, searching ? "No repositories match your search." : "No repositories found."));
     return;
   }
   const conflicts = conflictSection(grouped, prefix, actions);
   if (conflicts) body.append(conflicts);
-  for (const p of grouped.projects as ProjectGroup[]) body.append(groupSection(p.topic, p.name, p.repos, isCollapsed(p.topic), actions, "", true));
+  for (const p of grouped.groups as RepoGroup[]) body.append(groupSection(p.topic, p.name, p.repos, isCollapsed(p.topic), actions, "", true));
   if (grouped.ungrouped.length > 0) body.append(groupSection(UNGROUPED_KEY, "Ungrouped", grouped.ungrouped, isCollapsed(UNGROUPED_KEY), actions, "gtf-ungrouped"));
 }
 

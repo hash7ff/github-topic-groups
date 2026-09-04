@@ -5,11 +5,11 @@ import { pollDeviceToken, refreshAccessToken, requestDeviceCode } from "./device
 import { createTokenManager } from "./token-manager.ts";
 import * as storage from "./storage.ts";
 import { toAuthRecord } from "../core/auth.ts";
-import { GITHUB_APP_CLIENT_ID, GITHUB_APP_INSTALL_URL, GITHUB_APP_SLUG } from "../core/config.ts";
+import { GITHUB_APP_CLIENT_ID, GITHUB_APP_ID, GITHUB_APP_INSTALL_URL } from "../core/config.ts";
 import { isValidPrefix, PREFIX_MAX_LENGTH } from "../core/topic.ts";
-import { BULK_PORT, fail, ok, type AuthStatus, type BulkEvent, type BulkRequest, type DevicePoll, type DeviceStart, type InstallationsStatus, type ReposList, type Request, type Response as MsgResponse, type SetProjectResult } from "../core/messages.ts";
+import { BULK_PORT, fail, ok, type AuthStatus, type BulkEvent, type BulkRequest, type DevicePoll, type DeviceStart, type InstallationsStatus, type ReposList, type Request, type Response as MsgResponse, type SetGroupResult } from "../core/messages.ts";
 import { expectationMatches, planTopicWrite } from "../core/writePlan.ts";
-import { projectTopics } from "../core/topic.ts";
+import { groupTopics } from "../core/topic.ts";
 import type { Prefs } from "../core/messages.ts";
 import type { ApiErrorInfo } from "../core/types.ts";
 
@@ -44,6 +44,10 @@ const tokens = createTokenManager({
 });
 const api = createGitHubApi({ getToken: tokens.getAccessToken });
 
+/** Match installations by the app's numeric id: it survives renames, the slug does not. */
+const isOurs = (i: { appId: number; appSlug: string | null }): boolean =>
+  i.appId === GITHUB_APP_ID || (i.appId === 0 && i.appSlug === null);
+
 function toErrorInfo(e: unknown): ApiErrorInfo {
   if (e instanceof GitHubApiError) return e.info;
   return { kind: "other", status: 0, message: e instanceof Error ? e.message : String(e) };
@@ -55,7 +59,7 @@ async function writeErrorInfo(e: unknown): Promise<ApiErrorInfo> {
   if (info.kind !== "forbidden" && info.kind !== "not_found") return info;
   const auth = await storage.getAuth();
   if (auth?.kind !== "github-app") return info;
-  return { ...info, installUrl: GITHUB_APP_INSTALL_URL, message: `${info.message} — the Topic Folders app may not be installed on this repository.` };
+  return { ...info, installUrl: GITHUB_APP_INSTALL_URL, message: `${info.message} — the Topic Groups app may not be installed on this repository.` };
 }
 
 async function resolveLogin(): Promise<string> {
@@ -113,14 +117,14 @@ async function devicePoll(flowId: string): Promise<MsgResponse<DevicePoll>> {
   return ok({ done: true, login });
 }
 
-/** Accounts (the user plus organizations) where the Topic Folders app is installed. Cached for the session. */
+/** Accounts (the user plus organizations) where the Topic Groups app is installed. Cached for the session. */
 async function installedAccounts(force = false): Promise<string[]> {
   if (!force) {
     const cached = await storage.getInstalledAccounts();
     if (cached) return cached;
   }
   const accounts = (await api.listInstallations())
-    .filter((i) => i.appSlug === null || i.appSlug === GITHUB_APP_SLUG)
+    .filter(isOurs)
     .map((i) => (i.account ?? "").toLowerCase())
     .filter((a) => a !== "");
   await storage.setInstalledAccounts(accounts);
@@ -144,7 +148,7 @@ async function resolveTarget(owner: string): Promise<{ kind: "user" | "org" } | 
   return {
     kind: "not_installed",
     status: 0,
-    message: `Topic Folders is not installed on ${owner}.`,
+    message: `Topic Groups is not installed on ${owner}.`,
     installUrl: GITHUB_APP_INSTALL_URL,
   };
 }
@@ -153,7 +157,7 @@ async function installations(): Promise<MsgResponse<InstallationsStatus>> {
   const auth = await storage.getAuth();
   if (!auth) return fail({ kind: "unauthorized", status: 0, message: "Not signed in." });
   if (auth.kind === "pat") return ok({ installed: true, count: 0, repositorySelection: null, installUrl: GITHUB_APP_INSTALL_URL });
-  const mine = (await api.listInstallations()).filter((i) => i.appSlug === null || i.appSlug === GITHUB_APP_SLUG);
+  const mine = (await api.listInstallations()).filter(isOurs);
   return ok({ installed: mine.length > 0, count: mine.length, repositorySelection: mine[0]?.repositorySelection ?? null, installUrl: GITHUB_APP_INSTALL_URL });
 }
 
@@ -172,7 +176,7 @@ async function listRepos(owner: string, force: boolean): Promise<MsgResponse<Rep
     if (auth?.kind === "github-app") {
       const inst = await installations();
       if (inst.ok && !inst.data.installed) {
-        return fail({ kind: "not_installed", status: 0, message: "Topic Folders is not installed on your repositories yet.", installUrl: GITHUB_APP_INSTALL_URL });
+        return fail({ kind: "not_installed", status: 0, message: "Topic Groups is not installed on your repositories yet.", installUrl: GITHUB_APP_INSTALL_URL });
       }
     }
   }
@@ -200,11 +204,11 @@ function serializedWrite<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /**
- * The one write path (Plan.md §3.4): fresh GET -> expectation check -> plan (keeps every non-folder topic) -> journal -> PUT -> patch cache.
+ * The one write path (Plan.md §3.4): fresh GET -> expectation check -> plan (keeps every non-group topic) -> journal -> PUT -> patch cache.
  * `expect` is what the UI showed the user; if GitHub changed meanwhile the repository is skipped instead of overwritten.
  * `prefs` is a snapshot taken once per user action so a settings change mid-operation cannot alter later items.
  */
-async function setProject(owner: string, repo: string, project: string | null, expect: string[] | null, prefs: Prefs): Promise<MsgResponse<SetProjectResult>> {
+async function setGroup(owner: string, repo: string, group: string | null, expect: string[] | null, prefs: Prefs): Promise<MsgResponse<SetGroupResult>> {
   const target = await resolveTarget(owner);
   if ("message" in target) return fail(target);
   const cached = (await storage.getRepoCache(owner))?.repos.find((r) => r.name.toLowerCase() === repo.toLowerCase());
@@ -213,12 +217,12 @@ async function setProject(owner: string, repo: string, project: string | null, e
   return serializedWrite(async () => {
     const current = await api.getTopics(owner, repo);
     await storage.patchCachedTopics(owner, repo, current); // the list now reflects GitHub even if we stop here
-    const currentFolder = projectTopics(current, prefs.prefix);
+    const currentFolder = groupTopics(current, prefs.prefix);
     if (!expectationMatches(currentFolder, expect)) {
       const now = currentFolder.length === 0 ? "Ungrouped" : currentFolder.join(", ");
       return fail({ kind: "stale", status: 0, message: `${repo} changed on GitHub since the list was loaded (now: ${now}). Nothing was written; refresh and try again.` });
     }
-    const plan = planTopicWrite(current, project, prefs.prefix);
+    const plan = planTopicWrite(current, group, prefs.prefix);
     if (plan.kind === "error") return fail({ kind: "validation", status: 0, message: plan.message });
     if (plan.kind === "unchanged") return ok({ changed: false, before: plan.topics, after: plan.topics, dryRun: prefs.dryRun });
 
@@ -237,7 +241,7 @@ chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== BULK_PORT || !port.sender || classifySender(port.sender) === "unknown") return;
   port.onMessage.addListener(async (message: unknown) => {
     const req = message as Partial<BulkRequest>;
-    if (req.type !== "bulk.setProject" || !Array.isArray(req.items)) return;
+    if (req.type !== "bulk.setGroup" || !Array.isArray(req.items)) return;
     const post = (e: BulkEvent) => {
       try {
         port.postMessage(e);
@@ -245,13 +249,13 @@ chrome.runtime.onConnect.addListener((port) => {
         /* page went away */
       }
     };
-    const items = req.items.filter((it) => it && isName(it.owner) && isName(it.repo) && (it.project === null || typeof it.project === "string") && isTopicList(it.expect));
+    const items = req.items.filter((it) => it && isName(it.owner) && isName(it.repo) && (it.group === null || typeof it.group === "string") && isTopicList(it.expect));
     if (items.length !== req.items.length || items.length === 0 || items.length > BULK_MAX_ITEMS) {
       post({ type: "result", succeeded: [], failed: [{ repo: "*", error: { kind: "validation", status: 0, message: "Invalid bulk request." } }] });
       return;
     }
     const prefs = await storage.getPrefs(); // one snapshot for the whole operation
-    const succeeded: Array<{ repo: string; result: SetProjectResult }> = [];
+    const succeeded: Array<{ repo: string; result: SetGroupResult }> = [];
     const failed: Array<{ repo: string; error: ApiErrorInfo }> = [];
     const total = items.length;
     let abort: ApiErrorInfo | null = null;
@@ -264,7 +268,7 @@ chrome.runtime.onConnect.addListener((port) => {
       post({ type: "progress", done: i, total, current: item.repo });
       let error: ApiErrorInfo | null = null;
       try {
-        const res = await setProject(item.owner, item.repo, item.project, item.expect, prefs);
+        const res = await setGroup(item.owner, item.repo, item.group, item.expect, prefs);
         if (res.ok) succeeded.push({ repo: item.repo, result: res.data });
         else error = res.error;
       } catch (e) {
@@ -309,12 +313,12 @@ async function handle(req: Request, from: SenderKind): Promise<MsgResponse<unkno
     case "repos.list":
       if (!isName(req.owner)) return fail({ kind: "validation", status: 0, message: "Invalid owner." });
       return listRepos(req.owner, req.force === true);
-    case "repos.setProject":
-      if (!isName(req.owner) || !isName(req.repo) || !(req.project === null || typeof req.project === "string") || !isTopicList(req.expect ?? null)) {
+    case "repos.setGroup":
+      if (!isName(req.owner) || !isName(req.repo) || !(req.group === null || typeof req.group === "string") || !isTopicList(req.expect ?? null)) {
         return fail({ kind: "validation", status: 0, message: "Invalid write request." });
       }
       try {
-        return await setProject(req.owner, req.repo, req.project, req.expect ?? null, await storage.getPrefs());
+        return await setGroup(req.owner, req.repo, req.group, req.expect ?? null, await storage.getPrefs());
       } catch (e) {
         return fail(await writeErrorInfo(e));
       }
@@ -328,7 +332,7 @@ async function handle(req: Request, from: SenderKind): Promise<MsgResponse<unkno
         return fail({ kind: "validation", status: 0, message: "The prefix and dry-run settings can only be changed from the settings page." });
       }
       if (req.patch.prefix !== undefined && !isValidPrefix(req.patch.prefix)) {
-        return fail({ kind: "validation", status: 0, message: `Prefix must be lowercase letters, numbers and hyphens, end with a hyphen, and be at most ${PREFIX_MAX_LENGTH} characters (e.g. "topic-folders-").` });
+        return fail({ kind: "validation", status: 0, message: `Prefix must be lowercase letters, numbers and hyphens, end with a hyphen, and be at most ${PREFIX_MAX_LENGTH} characters (e.g. "topic-groups-").` });
       }
       return ok(await storage.setPrefs(req.patch));
     default:

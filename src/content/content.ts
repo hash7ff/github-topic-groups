@@ -12,12 +12,12 @@ import { DEFAULT_PREFS, type AuthStatus, type Prefs, type ReposList, type ViewMo
 import type { ApiErrorInfo } from "../core/types.ts";
 import { buildToolbar, describeError, renderError, renderFilterChips, renderGroups, renderLoading, renderUnconfigured, setSegmentedMode, type ViewActions } from "./ui/view.ts";
 import { openMoveDialog } from "./ui/moveDialog.ts";
-import { openAddRepositoriesDialog, openNewProjectDialog } from "./ui/pickerDialog.ts";
-import { openDeleteDialog, openProjectMenu, openRenameDialog } from "./ui/projectDialogs.ts";
+import { openAddRepositoriesDialog, openNewGroupDialog } from "./ui/pickerDialog.ts";
+import { openDeleteDialog, openGroupMenu, openRenameDialog } from "./ui/groupDialogs.ts";
 import { openFixDialog } from "./ui/fixDialog.ts";
 import { runBulk } from "./bulk.ts";
-import { displayNameFromTopic, projectTopics } from "../core/topic.ts";
-import type { BulkItem, SetProjectResult } from "../core/messages.ts";
+import { displayNameFromTopic, groupTopics } from "../core/topic.ts";
+import type { BulkItem, SetGroupResult } from "../core/messages.ts";
 
 const ROOT_ID = "gtf-root";
 
@@ -65,8 +65,8 @@ class GroupedView {
       retry: () => void this.load(true),
       openSettings: () => void send({ type: "options.open" }),
       moveRepo: (name) => this.openMove(name),
-      newProject: () => this.openNewProject([]),
-      projectMenu: (topic) => this.openProjectMenu(topic),
+      newGroup: () => this.openNewGroup([]),
+      groupMenu: (topic) => this.openGroupMenu(topic),
       fixConflict: (name) => this.openFix(name),
     };
     const { toolbar, status, seg, search } = buildToolbar(actions);
@@ -127,30 +127,30 @@ class GroupedView {
     this.render();
   }
 
-  // ---- writes (M6): Move to… / New project ----
+  // ---- writes (M6): Move to… / New group ----
   private openMove(repoName: string): void {
     if (this.phase.kind !== "ready" || this.busy) return;
     const repo = this.phase.data.repos.find((r) => r.name === repoName);
     if (!repo) return;
-    const folderTopics = projectTopics(repo.topics, this.prefs.prefix);
-    const current = folderTopics[0] ?? null;
+    const groupTopicsOf = groupTopics(repo.topics, this.prefs.prefix);
+    const current = groupTopicsOf[0] ?? null;
     openMoveDialog({
       repoName,
       currentTopic: current,
-      projects: this.phase.grouped.projects.map((p) => ({ topic: p.topic, name: p.name, count: p.repos.length })),
-      onSelect: (project) => {
-        const target = project === null ? "Ungrouped" : (this.phase.kind === "ready" && this.phase.grouped.projects.find((p) => p.topic === project)?.name) || project;
-        void this.applyWrites([{ owner: this.ctx.owner, repo: repoName, project, expect: folderTopics }], `Moved ${repoName} to ${target}.`);
+      groups: this.phase.grouped.groups.map((p) => ({ topic: p.topic, name: p.name, count: p.repos.length })),
+      onSelect: (group) => {
+        const target = group === null ? "Ungrouped" : (this.phase.kind === "ready" && this.phase.grouped.groups.find((p) => p.topic === group)?.name) || group;
+        void this.applyWrites([{ owner: this.ctx.owner, repo: repoName, group, expect: groupTopicsOf }], `Moved ${repoName} to ${target}.`);
       },
-      onNewProject: () => this.openNewProject([repoName]),
+      onNewGroup: () => this.openNewGroup([repoName]),
     });
   }
 
-  private openNewProject(preselected: string[]): void {
+  private openNewGroup(preselected: string[]): void {
     if (this.phase.kind !== "ready" || this.busy) return;
-    const existing = new Set(this.phase.grouped.projects.map((p) => p.topic));
+    const existing = new Set(this.phase.grouped.groups.map((p) => p.topic));
     const repos = this.phase.data.repos;
-    openNewProjectDialog({
+    openNewGroupDialog({
       repos,
       preselected,
       prefix: this.prefs.prefix,
@@ -162,14 +162,14 @@ class GroupedView {
           this.prefs = { ...this.prefs, privacyNoticeDismissed: true };
           void send({ type: "prefs.set", patch: { privacyNoticeDismissed: true } });
         }
-        const expectOf = (name: string) => projectTopics(repos.find((r) => r.name === name)?.topics ?? [], this.prefs.prefix);
-        const items = repoNames.map((repo) => ({ owner: this.ctx.owner, repo, project: topic, expect: expectOf(repo) }));
+        const expectOf = (name: string) => groupTopics(repos.find((r) => r.name === name)?.topics ?? [], this.prefs.prefix);
+        const items = repoNames.map((repo) => ({ owner: this.ctx.owner, repo, group: topic, expect: expectOf(repo) }));
         await this.applyWrites(items, `${existing.has(topic) ? "Moved" : "Created"} ${displayName}: ${repoNames.length} repositor${repoNames.length === 1 ? "y" : "ies"}.`, true);
       },
     });
   }
 
-  // ---- M8: conflict fix (several folder topics on one repository) ----
+  // ---- M8: conflict fix (several group topics on one repository) ----
   private openFix(repoName: string): void {
     if (this.phase.kind !== "ready" || this.busy) return;
     const conflict = this.phase.grouped.conflicts.find((c) => c.repo.name === repoName);
@@ -178,58 +178,58 @@ class GroupedView {
       repoName,
       topics: conflict.topics,
       prefix: this.prefs.prefix,
-      onFix: (keep) => this.applyWrites([{ owner: this.ctx.owner, repo: repoName, project: keep, expect: [...conflict.topics] }], `Fixed ${repoName}: kept ${displayNameFromTopic(keep, this.prefs.prefix)}.`, true),
+      onFix: (keep) => this.applyWrites([{ owner: this.ctx.owner, repo: repoName, group: keep, expect: [...conflict.topics] }], `Fixed ${repoName}: kept ${displayNameFromTopic(keep, this.prefs.prefix)}.`, true),
     });
   }
 
-  // ---- M7: rename / delete a project = bulk topic replacement over its repositories ----
-  private openProjectMenu(topic: string): void {
+  // ---- M7: rename / delete a group = bulk topic replacement over its repositories ----
+  private openGroupMenu(topic: string): void {
     if (this.phase.kind !== "ready" || this.busy) return;
-    const project = this.phase.grouped.projects.find((p) => p.topic === topic);
-    if (!project) return;
-    const repos = project.repos.map((r) => r.name);
-    const existing = new Set(this.phase.grouped.projects.map((p) => p.topic));
-    openProjectMenu({
-      name: project.name,
+    const group = this.phase.grouped.groups.find((p) => p.topic === topic);
+    if (!group) return;
+    const repos = group.repos.map((r) => r.name);
+    const existing = new Set(this.phase.grouped.groups.map((p) => p.topic));
+    openGroupMenu({
+      name: group.name,
       onAdd: () =>
         openAddRepositoriesDialog({
-          projectName: project.name,
+          groupName: group.name,
           repos: this.phase.kind === "ready" ? this.phase.data.repos : [],
           preselected: [],
           conflicted: new Set(this.phase.kind === "ready" ? this.phase.grouped.conflicts.map((c) => c.repo.name) : []),
           memberNames: new Set(repos),
           onAdd: (names) => {
             const all = this.phase.kind === "ready" ? this.phase.data.repos : [];
-            const expectOf = (name: string) => projectTopics(all.find((r) => r.name === name)?.topics ?? [], this.prefs.prefix);
+            const expectOf = (name: string) => groupTopics(all.find((r) => r.name === name)?.topics ?? [], this.prefs.prefix);
             return this.applyWrites(
-              names.map((repo) => ({ owner: this.ctx.owner, repo, project: topic, expect: expectOf(repo) })),
-              `Moved ${names.length} repositor${names.length === 1 ? "y" : "ies"} into ${project.name}.`,
+              names.map((repo) => ({ owner: this.ctx.owner, repo, group: topic, expect: expectOf(repo) })),
+              `Moved ${names.length} repositor${names.length === 1 ? "y" : "ies"} into ${group.name}.`,
               true,
             );
           },
         }),
       onRename: () =>
         openRenameDialog({
-          name: project.name,
+          name: group.name,
           topic,
           count: repos.length,
           prefix: this.prefs.prefix,
           existingTopics: existing,
           onRename: (newTopic, newName) =>
             this.applyWrites(
-              repos.map((repo) => ({ owner: this.ctx.owner, repo, project: newTopic, expect: [topic] })),
-              `Renamed ${project.name} to ${newName} (${repos.length} repositor${repos.length === 1 ? "y" : "ies"}).`,
+              repos.map((repo) => ({ owner: this.ctx.owner, repo, group: newTopic, expect: [topic] })),
+              `Renamed ${group.name} to ${newName} (${repos.length} repositor${repos.length === 1 ? "y" : "ies"}).`,
               true,
             ),
         }),
       onDelete: () =>
         openDeleteDialog({
-          name: project.name,
+          name: group.name,
           count: repos.length,
           onDelete: () =>
             this.applyWrites(
-              repos.map((repo) => ({ owner: this.ctx.owner, repo, project: null, expect: [topic] })),
-              `Deleted project ${project.name}: ${repos.length} repositor${repos.length === 1 ? "y" : "ies"} moved to Ungrouped.`,
+              repos.map((repo) => ({ owner: this.ctx.owner, repo, group: null, expect: [topic] })),
+              `Deleted group ${group.name}: ${repos.length} repositor${repos.length === 1 ? "y" : "ies"} moved to Ungrouped.`,
               true,
             ),
         }),
@@ -246,7 +246,7 @@ class GroupedView {
       let changedCount = 0;
       if (items.length === 1) {
         const item = items[0]!;
-        const res = await send<SetProjectResult>({ type: "repos.setProject", owner: item.owner, repo: item.repo, project: item.project, expect: item.expect });
+        const res = await send<SetGroupResult>({ type: "repos.setGroup", owner: item.owner, repo: item.repo, group: item.group, expect: item.expect });
         if (res.ok) changedCount = res.data.changed ? 1 : 0;
         else failed = [{ repo: item.repo, error: res.error }];
         if (res.ok && res.data.dryRun) successMessage += " (dry run — nothing written)";
@@ -321,7 +321,7 @@ class GroupedView {
       p.kind === "loading"
         ? "Loading repositories…"
         : p.kind === "ready"
-          ? `${p.data.repos.length} repositories · ${p.grouped.projects.length} projects · updated ${relativeTime(new Date(p.data.fetchedAt).toISOString())}`
+          ? `${p.data.repos.length} repositories · ${p.grouped.groups.length} groups · updated ${relativeTime(new Date(p.data.fetchedAt).toISOString())}`
           : "";
   }
 

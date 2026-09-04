@@ -1,5 +1,12 @@
 # GitHub Topic Folders
 
+> **用語について（2026-09-04 追記）**
+> この仕様書は当初の用語で書かれている。実装では用語を **Group** に統一した（経緯は
+> [ImplementationPlan.md](ImplementationPlan.md) §5.8）。読み替えは次のとおり。
+> **Project / Folder / フォルダ → Group（グループ）**、**接頭辞 `project-` → `topic-groups-`（設定で変更可）**、
+> **拡張の名前 GitHub Topic Folders → Topic Groups for GitHub**。仕様の内容自体は変わっていない。
+
+
 ## GitHub Repository一覧をProject単位で整理するChrome拡張
 
 ### 1. 概要

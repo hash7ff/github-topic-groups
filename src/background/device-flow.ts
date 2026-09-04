@@ -1,4 +1,4 @@
-// GitHub OAuth device flow for the Topic Folders GitHub App. No client secret exists anywhere in this extension:
+// GitHub OAuth device flow for the Topic Groups GitHub App. No client secret exists anywhere in this extension:
 // device-flow tokens can be refreshed with the client ID alone (GitHub docs, verified 2026-09-03).
 import { parseDeviceCodeResponse, parseTokenPollResponse, type DeviceCodeResponse, type PollResult, type TokenResponse } from "../core/auth.ts";
 import { GitHubApiError, type FetchLike } from "./github-api.ts";

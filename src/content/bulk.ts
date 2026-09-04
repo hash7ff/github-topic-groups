@@ -18,7 +18,7 @@ export function runBulk(items: BulkItem[], onProgress: (done: number, total: num
     port.onDisconnect.addListener(() => {
       if (!settled) reject(new Error("The extension stopped before the operation finished. Reload the page to see the current state."));
     });
-    const req: BulkRequest = { type: "bulk.setProject", items };
+    const req: BulkRequest = { type: "bulk.setGroup", items };
     port.postMessage(req);
   });
 }

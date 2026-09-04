@@ -2,7 +2,7 @@ import { h } from "./h.ts";
 import { openDialog } from "./dialog.ts";
 import { displayNameFromTopic } from "../../core/topic.ts";
 
-/** Plan.md §25: a repository with several folder topics is never auto-resolved; the user picks the one to keep. */
+/** Plan.md §25: a repository with several group topics is never auto-resolved; the user picks the one to keep. */
 export function openFixDialog(opts: { repoName: string; topics: readonly string[]; prefix: string; onFix(keep: string): Promise<void> }): void {
   const dlg = openDialog(`Fix ${opts.repoName}`);
   const error = h("p", { className: "gtf-error", hidden: true });
@@ -23,7 +23,7 @@ export function openFixDialog(opts: { repoName: string; topics: readonly string[
     list.append(btn);
   }
   dlg.body.append(
-    h("p", {}, `This repository has ${opts.topics.length} folder topics. Choose the project to keep; the other folder topics are removed. All other topics stay.`),
+    h("p", {}, `This repository has ${opts.topics.length} group topics. Choose the group to keep; the other group topics are removed. All other topics stay.`),
     list,
     error,
   );

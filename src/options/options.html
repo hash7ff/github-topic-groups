@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>GitHub Topic Folders — Settings</title>
+  <title>Topic Groups for GitHub — Settings</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
   <main>
-    <h1>GitHub Topic Folders</h1>
-    <p class="muted">Groups your repositories on <code>github.com/&lt;you&gt;?tab=repositories</code> by <code>topic-folders-*</code> topics. Topics on GitHub stay the only source of truth.</p>
+    <h1>Topic Groups for GitHub</h1>
+    <p class="muted">Groups your repositories on <code>github.com/&lt;you&gt;?tab=repositories</code> by <code>topic-groups-*</code> topics. Topics on GitHub stay the only source of truth.</p>
 
     <section>
       <h2>GitHub account</h2>
@@ -30,7 +30,7 @@
         <p id="installStatus" class="muted"></p>
         <div id="installHint" class="card" hidden>
           <p>The app is not installed on your repositories yet, so it cannot see them. Install it (choose <em>All repositories</em>, or only the ones you want to organise), then come back and click Refresh.</p>
-          <a id="installLink" class="button-link" href="https://github.com/apps/topic-folders/installations/new" target="_blank" rel="noreferrer">Install on your repositories</a>
+          <a id="installLink" class="button-link" href="https://github.com/apps/topic-groups/installations/new" target="_blank" rel="noreferrer">Install on your repositories</a>
           <button id="recheck" type="button" class="secondary">Refresh</button>
         </div>
         <button id="signOut" type="button" class="secondary">Sign out</button>
@@ -41,14 +41,14 @@
     <section>
       <h2>Advanced</h2>
 
-      <label for="prefix">Folder topic prefix</label>
+      <label for="prefix">Group topic prefix</label>
       <div class="row">
-        <input id="prefix" type="text" autocomplete="off" spellcheck="false" placeholder="topic-folders-">
+        <input id="prefix" type="text" autocomplete="off" spellcheck="false" placeholder="topic-groups-">
         <button id="savePrefix" type="button" class="secondary">Save prefix</button>
       </div>
-      <p class="muted">Topics starting with this prefix are shown as folders; e.g. <code>topic-folders-client-a</code> becomes the folder <em>Client A</em>.
+      <p class="muted">Topics starting with this prefix are shown as folders; e.g. <code>topic-groups-client-a</code> becomes the folder <em>Client A</em>.
         Lowercase letters, numbers and hyphens, ending with a hyphen. This setting lives in this browser only: repositories tagged with a different prefix are not recognised as folders until re-tagged.
-        Choose a prefix nobody uses for anything else, because "Delete project" removes topics with this prefix.</p>
+        Choose a prefix nobody uses for anything else, because "Delete group" removes topics with this prefix.</p>
       <p id="prefixResult" class="result" hidden></p>
 
       <label class="check"><input id="dryRun" type="checkbox"> Dry run: plan and log topic changes but never write them to GitHub</label>
@@ -69,10 +69,10 @@
     <section>
       <h2>Important</h2>
       <ul>
-        <li><strong>Topic names are public</strong>, even on private repositories. Do not use confidential client or project names as project topics.</li>
+        <li><strong>Topic names are public</strong>, even on private repositories. Do not use confidential client or group names as group topics.</li>
         <li>Your GitHub credential is stored locally in this browser profile (<code>chrome.storage.local</code>) and is sent only to GitHub. It is never given to the GitHub web page or written to logs.</li>
         <li>This extension only reads your repository list and replaces repository topics. It never deletes repositories or changes anything else.</li>
-        <li>Every topic outside the folder prefix is preserved when a repository is moved between projects.</li>
+        <li>Every topic outside the group prefix is preserved when a repository is moved between groups.</li>
       </ul>
     </section>
   </main>

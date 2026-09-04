@@ -94,7 +94,7 @@ export function matchesFilter(repo: RepoSummary, filter: GitHubFilter): boolean 
 
 const timeOf = (r: RepoSummary): number => Date.parse(r.pushedAt ?? r.updatedAt) || 0;
 
-/** Repository order inside a folder. Empty keeps our alphabetical default; GitHub's own choice wins when set. */
+/** Repository order inside a group. Empty keeps our alphabetical default; GitHub's own choice wins when set. */
 export function sortRepos(repos: readonly RepoSummary[], sort: RepoSort): RepoSummary[] {
   const list = [...repos];
   if (sort === "updated") return list.sort((a, b) => timeOf(b) - timeOf(a));
@@ -106,11 +106,11 @@ export function isFiltering(filter: GitHubFilter): boolean {
   return filter.q.trim() !== "" || filter.language !== "" || filter.type !== "";
 }
 
-/** Apply text/type/language filtering and repository ordering. Folders with nothing left are dropped. */
+/** Apply text/type/language filtering and repository ordering. Groups with nothing left are dropped. */
 export function applyFilter(grouped: Grouped, filter: GitHubFilter): Grouped {
   const keep = (repos: readonly RepoSummary[]) => sortRepos(repos.filter((r) => matchesFilter(r, filter)), filter.sort);
   return {
-    projects: grouped.projects.map((p) => ({ ...p, repos: keep(p.repos) })).filter((p) => p.repos.length > 0 || !isFiltering(filter)),
+    groups: grouped.groups.map((p) => ({ ...p, repos: keep(p.repos) })).filter((p) => p.repos.length > 0 || !isFiltering(filter)),
     ungrouped: keep(grouped.ungrouped),
     conflicts: grouped.conflicts.filter((c) => matchesFilter(c.repo, filter)),
   };

@@ -1,15 +1,15 @@
 import { h } from "./h.ts";
 import { openDialog } from "./dialog.ts";
-import { normalizeProjectName } from "../../core/topic.ts";
+import { normalizeGroupName } from "../../core/topic.ts";
 
 const plural = (n: number) => `${n} repositor${n === 1 ? "y" : "ies"}`;
 
-export function openProjectMenu(opts: { name: string; onAdd(): void; onRename(): void; onDelete(): void }): void {
+export function openGroupMenu(opts: { name: string; onAdd(): void; onRename(): void; onDelete(): void }): void {
   const dlg = openDialog(opts.name);
   const item = (label: string, danger: boolean, onClick: () => void) =>
     h("button", { className: `gtf-menu-item ${danger ? "gtf-menu-item-danger" : ""}`.trim(), type: "button", onClick: () => { dlg.close(); onClick(); } }, h("span", { className: "gtf-menu-item-label" }, label));
   dlg.body.append(
-    h("div", { className: "gtf-menu" }, item("Add repositories…", false, opts.onAdd), item("Rename project…", false, opts.onRename), item("Delete project…", true, opts.onDelete)),
+    h("div", { className: "gtf-menu" }, item("Add repositories…", false, opts.onAdd), item("Rename group…", false, opts.onRename), item("Delete group…", true, opts.onDelete)),
   );
 }
 
@@ -22,7 +22,7 @@ export function openRenameDialog(opts: {
   onRename(newTopic: string, newName: string): Promise<void>;
 }): void {
   const dlg = openDialog(`Rename ${opts.name}`);
-  const input = h("input", { className: "gtf-input", type: "text", ariaLabel: "New project name" }) as HTMLInputElement;
+  const input = h("input", { className: "gtf-input", type: "text", ariaLabel: "New group name" }) as HTMLInputElement;
   input.value = opts.name;
   const preview = h("p", { className: "gtf-preview" });
   const summary = h("p", {});
@@ -30,7 +30,7 @@ export function openRenameDialog(opts: {
   const btn = h("button", { className: "gtf-btn gtf-btn-primary", type: "button" }, "Rename");
 
   const update = () => {
-    const res = normalizeProjectName(input.value, opts.prefix);
+    const res = normalizeGroupName(input.value, opts.prefix);
     if (!res.ok) {
       preview.textContent = res.error;
       preview.className = "gtf-preview gtf-error";
@@ -48,13 +48,13 @@ export function openRenameDialog(opts: {
     const merge = opts.existingTopics.has(res.topic);
     preview.textContent = `Topic: ${opts.topic} → ${res.topic}`;
     summary.textContent = merge
-      ? `This will move ${plural(opts.count)} into the existing project "${input.value.trim()}".`
+      ? `This will move ${plural(opts.count)} into the existing group "${input.value.trim()}".`
       : `Rename "${opts.name}" to "${input.value.trim()}"? This will update ${plural(opts.count)}.`;
     btn.disabled = false;
   };
   input.addEventListener("input", update);
   btn.addEventListener("click", async () => {
-    const res = normalizeProjectName(input.value, opts.prefix);
+    const res = normalizeGroupName(input.value, opts.prefix);
     if (!res.ok) return;
     btn.disabled = true;
     btn.textContent = "Renaming…";
@@ -69,10 +69,10 @@ export function openRenameDialog(opts: {
     }
   });
   dlg.body.append(
-    h("label", { className: "gtf-field" }, h("span", { className: "gtf-field-label" }, "New project name"), input),
+    h("label", { className: "gtf-field" }, h("span", { className: "gtf-field-label" }, "New group name"), input),
     preview,
     summary,
-    h("p", { className: "gtf-muted" }, "Topics have no rename operation on GitHub: each repository's folder topic is replaced one by one."),
+    h("p", { className: "gtf-muted" }, "Topics have no rename operation on GitHub: each repository's group topic is replaced one by one."),
     h("div", { className: "gtf-dialog-foot" }, h("span", { className: "gtf-spacer" }), h("button", { className: "gtf-btn", type: "button", onClick: () => dlg.close() }, "Cancel"), btn),
     error,
   );
@@ -82,9 +82,9 @@ export function openRenameDialog(opts: {
 }
 
 export function openDeleteDialog(opts: { name: string; count: number; onDelete(): Promise<void> }): void {
-  const dlg = openDialog(`Delete project "${opts.name}"?`);
+  const dlg = openDialog(`Delete group "${opts.name}"?`);
   const error = h("p", { className: "gtf-error", hidden: true });
-  const btn = h("button", { className: "gtf-btn gtf-btn-danger", type: "button" }, "Delete project");
+  const btn = h("button", { className: "gtf-btn gtf-btn-danger", type: "button" }, "Delete group");
   btn.addEventListener("click", async () => {
     btn.disabled = true;
     btn.textContent = "Deleting…";
@@ -95,12 +95,12 @@ export function openDeleteDialog(opts: { name: string; count: number; onDelete()
       error.textContent = e instanceof Error ? e.message : String(e);
       error.hidden = false;
       btn.disabled = false;
-      btn.textContent = "Delete project";
+      btn.textContent = "Delete group";
     }
   });
   dlg.body.append(
     h("p", {}, `${plural(opts.count)} will become Ungrouped.`),
-    h("p", {}, h("strong", {}, "Repositories themselves will NOT be deleted."), " Only the folder topic is removed from each repository; every other topic stays."),
+    h("p", {}, h("strong", {}, "Repositories themselves will NOT be deleted."), " Only the group topic is removed from each repository; every other topic stays."),
     h("div", { className: "gtf-dialog-foot" }, h("span", { className: "gtf-spacer" }), h("button", { className: "gtf-btn", type: "button", onClick: () => dlg.close() }, "Cancel"), btn),
     error,
   );

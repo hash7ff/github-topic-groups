@@ -31,7 +31,7 @@ export type GitHubApi = {
   listInstallations(): Promise<Installation[]>;
 };
 
-export type Installation = { id: number; appSlug: string | null; account: string | null; repositorySelection: string | null };
+export type Installation = { id: number; appId: number; appSlug: string | null; account: string | null; repositorySelection: string | null };
 
 export function parseLinkNext(link: string | null): string | null {
   if (!link) return null;
@@ -170,6 +170,7 @@ export function createGitHubApi(deps: { getToken: () => Promise<string | null>; 
         const r = (raw ?? {}) as Record<string, unknown>;
         return {
           id: typeof r["id"] === "number" ? r["id"] : 0,
+          appId: typeof r["app_id"] === "number" ? r["app_id"] : 0,
           appSlug: str(r["app_slug"]),
           account: str((r["account"] as Record<string, unknown> | undefined)?.["login"]),
           repositorySelection: str(r["repository_selection"]),

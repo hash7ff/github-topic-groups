@@ -1,13 +1,13 @@
 // M8: conflict detection + Fix. Creates a deliberate conflict on gtf-test-firmware (test repo only), fixes it via the UI, restores.
 const { chromium } = require('playwright-core');
-const EXT_ID = process.argv[2]; const READ = process.env.GTF_READ_TOKEN; const P = 'topic-folders-';
+const EXT_ID = process.argv[2]; const READ = process.env.GTF_READ_TOKEN; const P = 'topic-groups-';
 const gh = async (path) => (await fetch('https://api.github.com' + path, { headers: { Authorization: `Bearer ${READ}`, Accept: 'application/vnd.github+json' } })).json();
 const firmware = async () => (await gh('/repos/mutsuyuki/gtf-test-firmware/topics')).names;
 (async () => {
   const browser = await chromium.connectOverCDP('http://localhost:9224');
   const ctx = browser.contexts()[0];
   const opt = await ctx.newPage(); await opt.goto(`chrome-extension://${EXT_ID}/options.html`);
-  // create the conflict directly with the app token (the extension itself never writes two folder topics)
+  // create the conflict directly with the app token (the extension itself never writes two group topics)
   const put = (names) => opt.evaluate(async (names) => { const { ['gtf.auth']: a } = await chrome.storage.local.get('gtf.auth'); const r = await fetch('https://api.github.com/repos/mutsuyuki/gtf-test-firmware/topics', { method: 'PUT', headers: { Authorization: `Bearer ${a.accessToken}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ names }) }); await chrome.storage.session.clear(); return r.status; }, names);
   console.log('0 SEED conflict PUT status', await put([P + 'client-a', P + 'client-b', 'keep-me']), 'github firmware:', JSON.stringify(await firmware()));
   const page = ctx.pages().find(p => p.url().startsWith('https://github.com/mutsuyuki')) || await ctx.newPage();

@@ -1,5 +1,10 @@
 # GitHub Topic Folders — 実装計画
 
+> **用語（2026-09-04）**: 用語を **Group** に統一した（§5.8）。以下の履歴に残る Project / Folder / フォルダ、
+> および接頭辞 `topic-folders-`・名前 `github-topic-folders` は、当時の呼称としてそのまま残してある。
+> いずれも現在の Group / `topic-groups-` / `github-topic-groups` を指す。
+
+
 - 作成: 2026-09-03 / 対象仕様: [Plan.md](Plan.md) / 状態: 提案（未着手・未決事項は §7）
 - 前提モード: `context: hash7ff`（個人プロジェクト。**Chrome ウェブストアで公開予定**。2026-09-03 に田中さん確認）。
   Topic 名に受託クライアント名が載る問題は §6 で別扱い。
@@ -153,7 +158,7 @@ build-in-public の観点では、リポを最初から公開（MIT）にする�
 - 実アカウントの本番リポには v0.1 完了まで書き込まない。
 
 ### 5.3 実機確認（ホスト Chrome、CDP 9224）— 2026-09-03 接続確認済み
-- ホスト側の `share` ディレクトリ: `/home/mutsuyuki/@sync/@study/SelfProject/github-topic-folder/`（Load unpacked の対象は `.../workspace/github-topic-folders/dist`）。
+- ホスト側の `share` ディレクトリ: `/home/mutsuyuki/@sync/@study/SelfProject/github-topic-folder/`（Load unpacked の対象は `.../workspace/github-topic-groups/dist`。2026-09-04 の改名でフォルダ名が変わり、unpacked 拡張の ID はパス由来なので**再読み込みとサインインのやり直しが必要**になった）。
 - コンテナには Chrome が無く、コンテナからホストのプロセスは起動できない。**この拡張専用の Chrome プロファイルを田中さんがホスト側で起動**（CDP ポート 9224。9222/9223 は他プロジェクト用なので触らない）。
   接続確認: Chrome 152 / CDP 1.3。Chrome が再起動された時は田中さんが再度起動する。
 - 人間ゲート（各 1 回）: そのプロファイルで `chrome://extensions` → Developer mode → Load unpacked で `dist/` を指定 → GitHub にログイン → Options の「Sign in with GitHub」で承認（コード入力）。App のインストール範囲はテストリポ 3 つ。
@@ -271,6 +276,28 @@ src/content/pages/
 **0.3.1 の修正（見た目）**: 当初は `[id$="-list-view-container"]` を目印にしていたため、GitHub が一覧を包む**枠線付きの箱の内側**に自前 UI が入り、ツールバーやグループ枠が枠線に接していた。目印を 1 段上の `div[data-listview-repos-list]`（枠線・件数・表示密度切替を含む箱）に変更し、箱ごと隠すようにした。これで自前 UI は枠線の外に出て、枠線も消える。**GitHub の CSS は上書きしない**。同じ要素のクラス名 `ReposList-module__ReposListContainer__BrFiJ` はビルドごとに変わるハッシュ付きなので使わない（田中さんの指摘どおり脆い）。検証スクリプトに「箱の内側に入っていないこと」の確認を追加。
 
 **戦略的な含意**: Org ページが既に React で個人ページがまだサーバー描画ということは、GitHub が移行途中である可能性が高い。個人ページが React 化されたとき、現在の足場は消える。その場合この拡張は「何もしない」だけで GitHub の操作は壊さない設計（§19）だが、機能は止まる。DOM 依存を最小に保つ現方針の妥当性を裏づけると同時に、いずれ React ページへの差し込み手法が必要になることを示す。
+
+## 5.8 用語と名前の統一（2026-09-04、田中さん判断）
+
+「New project で作るもの」「Grouped という表示」「Folders という製品名」で 1 つの概念に 3 つの語が使われていた（UI 文言 18 種、識別子は project 337 / group 221 / folder 198 回）。**Group に統一**した。
+
+判断の根拠:
+- **project は GitHub 自身の機能と衝突する**。書き換え対象の画面の隣に Projects タブがあり、GitHub Projects は広く知られている。
+- **folder は約束しすぎ**。入れ子と包含を含意するが、実体は平坦なラベルで入れ子はやらないと決めている（§5.6）。
+- **group には前例があり衝突しない**。Plan.md の出発点が「GitLab の Group/Subgroup が GitHub に無い」であり、GitHub に Groups という機能は無い。表示切替も既に Grouped だった。
+
+決めた名前:
+
+| 対象 | 変更前 | 変更後 | 備考 |
+|---|---|---|---|
+| 表示名 | GitHub Topic Folders | **Topic Groups for GitHub** | ストア規約「他社に許可・推奨・製造されたと表現しない」。GitHub App でも「名前を GitHub で始めるな」に実際に一度ぶつかった |
+| リポジトリ | github-topic-folders | **github-topic-groups** | 空きを確認済み |
+| GitHub App | Topic Folders（slug `topic-folders`） | **Topic Groups**（slug `topic-groups`） | 空きを確認済み。App ID と Client ID は改名では変わらない |
+| 既定の接頭辞 | `topic-folders-` | **`topic-groups-`** | 衝突 0 件。名前部分は 37 文字まで |
+
+**タイミングの理由**: 接頭辞だけはユーザーのデータに焼き付く。判断時点で付いていたのは 6 リポ（テスト 2 + skh 4）だけで、付け替えが安価だった。109 個の分類が進んだ後では移行作業になる。
+
+**改名で壊れないようにした点**: インストール判定に App の slug を使っていたため改名で組織判定が壊れる作りだった。**数値の App ID（4816822、改名で不変）で照合**するよう変更し、slug はインストール URL の組み立てにのみ使う。これで GitHub 側の改名を先にしても後にしても壊れない。
 
 ## 6. リスクと対策
 

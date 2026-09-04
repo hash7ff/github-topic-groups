@@ -1,6 +1,6 @@
 // Reload OUR unpacked extension (resolved by name + UNPACKED location, never by a guessed ID). Prints the resolved ID.
 const { chromium } = require('playwright-core');
-const NAME = 'GitHub Topic Folders';
+const NAME = 'Topic Groups for GitHub';
 (async () => {
   const browser = await chromium.connectOverCDP('http://localhost:9224');
   const page = await browser.contexts()[0].newPage();

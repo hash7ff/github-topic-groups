@@ -1,9 +1,9 @@
 {
-  "name": "github-topic-folders",
-  "version": "0.3.1",
+  "name": "github-topic-groups",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "Show your GitHub repositories grouped into folders by project-* topics.",
+  "description": "Show your GitHub repositories grouped into groups using topics.",
   "scripts": {
     "build": "node build.mjs",
     "watch": "node build.mjs --watch",

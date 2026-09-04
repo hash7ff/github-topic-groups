@@ -48,26 +48,26 @@ test("without a token nothing is sent", async () => {
 test("listOwnRepos follows Link pagination and maps fields (topics included)", async () => {
   const page = (names: string[], next: string | null) =>
     json(
-      names.map((n) => ({ name: n, full_name: `mutsuyuki/${n}`, owner: { login: "mutsuyuki" }, private: true, description: null, language: "Dart", pushed_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z", html_url: `https://github.com/mutsuyuki/${n}`, topics: ["project-x", "python"], archived: false, fork: false })),
+      names.map((n) => ({ name: n, full_name: `mutsuyuki/${n}`, owner: { login: "mutsuyuki" }, private: true, description: null, language: "Dart", pushed_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z", html_url: `https://github.com/mutsuyuki/${n}`, topics: ["group-x", "python"], archived: false, fork: false })),
       200,
       next ? { link: `<${next}>; rel="next"` } : {},
     );
   const { fetchImpl, calls } = mockFetch((c) => (c.url.includes("page=2") ? page(["b"], null) : page(["a"], "https://api.github.com/user/repos?affiliation=owner&per_page=100&page=2")));
   const repos = await api(fetchImpl).listOwnRepos();
   assert.deepEqual(repos.map((r) => r.name), ["a", "b"]);
-  assert.deepEqual(repos[0]?.topics, ["project-x", "python"]);
+  assert.deepEqual(repos[0]?.topics, ["group-x", "python"]);
   assert.equal(repos[0]?.language, "Dart");
   assert.equal(calls.length, 2);
   assert.ok(calls[0]?.url.includes("affiliation=owner") && calls[0]?.url.includes("per_page=100"));
 });
 
 test("putTopics sends the complete list as {names} with PUT to the topics endpoint", async () => {
-  const { fetchImpl, calls } = mockFetch(() => json({ names: ["python", "backend", "project-client-b"] }));
-  const out = await api(fetchImpl).putTopics("mutsuyuki", "api", ["python", "backend", "project-client-b"]);
-  assert.deepEqual(out, ["python", "backend", "project-client-b"]);
+  const { fetchImpl, calls } = mockFetch(() => json({ names: ["python", "backend", "group-client-b"] }));
+  const out = await api(fetchImpl).putTopics("mutsuyuki", "api", ["python", "backend", "group-client-b"]);
+  assert.deepEqual(out, ["python", "backend", "group-client-b"]);
   assert.equal(calls[0]?.method, "PUT");
   assert.equal(calls[0]?.url, "https://api.github.com/repos/mutsuyuki/api/topics");
-  assert.deepEqual(JSON.parse(calls[0]?.body ?? "{}"), { names: ["python", "backend", "project-client-b"] });
+  assert.deepEqual(JSON.parse(calls[0]?.body ?? "{}"), { names: ["python", "backend", "group-client-b"] });
   assert.equal(calls[0]?.headers["Content-Type"], "application/json");
 });
 
@@ -110,4 +110,14 @@ test("toRepoSummary tolerates missing optional fields and rejects garbage", () =
   assert.equal(r?.description, null);
   assert.equal(r?.stargazers, 0);
   assert.equal(r?.mirror, false);
+});
+
+test("listInstallations exposes the numeric app id (stable across renames) alongside the slug", async () => {
+  const { fetchImpl } = mockFetch(() =>
+    json({ total_count: 1, installations: [{ id: 1, app_id: 4816822, app_slug: "topic-folders", account: { login: "hash7ff" }, repository_selection: "selected" }] }),
+  );
+  const [inst] = await api(fetchImpl).listInstallations();
+  assert.equal(inst?.appId, 4816822);
+  assert.equal(inst?.appSlug, "topic-folders");
+  assert.equal(inst?.account, "hash7ff");
 });

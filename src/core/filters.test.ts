@@ -48,11 +48,11 @@ test("sortRepos: default alphabetical, GitHub's choice wins when set", () => {
 });
 
 test("applyFilter drops folders with no matches but keeps them when nothing is filtered", () => {
-  const g = groupRepos([repo("api", ["topic-folders-client-a"]), repo("firmware", ["topic-folders-client-b"]), repo("tool", [])]);
+  const g = groupRepos([repo("api", ["topic-groups-client-a"]), repo("firmware", ["topic-groups-client-b"]), repo("tool", [])]);
   const filtered = applyFilter(g, { ...EMPTY_FILTER, q: "api" });
-  assert.deepEqual(filtered.projects.map((p) => p.name), ["Client A"]);
+  assert.deepEqual(filtered.groups.map((p) => p.name), ["Client A"]);
   assert.deepEqual(filtered.ungrouped, []);
-  assert.deepEqual(applyFilter(g, EMPTY_FILTER).projects.map((p) => p.name), ["Client A", "Client B"], "an empty folder survives when not filtering");
+  assert.deepEqual(applyFilter(g, EMPTY_FILTER).groups.map((p) => p.name), ["Client A", "Client B"], "an empty folder survives when not filtering");
 });
 
 test("isFiltering ignores sort (ordering is not filtering)", () => {

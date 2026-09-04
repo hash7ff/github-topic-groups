@@ -1,6 +1,6 @@
 // Verify: GitHub's own filter controls now drive the grouped view; language dots; Add repositories… dialog.
 const { chromium } = require('playwright-core');
-const READ = process.env.GTF_READ_TOKEN; const P = 'topic-folders-';
+const READ = process.env.GTF_READ_TOKEN; const P = 'topic-groups-';
 const gh = async (p) => (await fetch('https://api.github.com' + p, { headers: { Authorization: `Bearer ${READ}`, Accept: 'application/vnd.github+json' } })).json();
 const topics = async () => ({ api: (await gh('/repos/mutsuyuki/gtf-test-api/topics')).names, frontend: (await gh('/repos/mutsuyuki/gtf-test-frontend/topics')).names, firmware: (await gh('/repos/mutsuyuki/gtf-test-firmware/topics')).names });
 (async () => {
@@ -33,7 +33,7 @@ const topics = async () => ({ api: (await gh('/repos/mutsuyuki/gtf-test-api/topi
   await page.waitForFunction(() => document.querySelector('#gtf-root .gtf-group') || document.querySelector('#gtf-root .gtf-empty'), null, { timeout: 60000 }); await page.waitForTimeout(500);
   console.log('8 native search box  ', JSON.stringify(await snap()));
 
-  // Add repositories… : move firmware into Client A through the project menu
+  // Add repositories… : move firmware into Client A through the group menu
   await go('');
   await page.click(`#gtf-root .gtf-group[data-key="${P}client-a"] .gtf-group-menu`);
   const dlg = page.locator('dialog.gtf-dialog[open]'); await dlg.waitFor();

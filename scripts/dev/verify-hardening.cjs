@@ -27,12 +27,12 @@ const gh = async (path) => (await fetch('https://api.github.com' + path, { heade
   const evalIn = async (expression) => { const r = await cdp.send('Runtime.evaluate', { expression, contextId: ours.id, awaitPromise: true, returnByValue: true }); return r.exceptionDetails ? 'EXC:' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text).slice(0, 160) : r.result.value; };
   console.log('1 storage.local from content world:', await evalIn(`chrome.storage.local.get('gtf.auth').then(r => 'READABLE keys=' + JSON.stringify(Object.keys(r))).catch(e => 'DENIED: ' + e.message)`));
   console.log('2 journal.list from content:', JSON.stringify(await evalIn(`chrome.runtime.sendMessage({type:'journal.list'})`)));
-  console.log('3 prefs.set prefix from content:', JSON.stringify(await evalIn(`chrome.runtime.sendMessage({type:'prefs.set', patch:{prefix:'project-'}})`)));
+  console.log('3 prefs.set prefix from content:', JSON.stringify(await evalIn(`chrome.runtime.sendMessage({type:'prefs.set', patch:{prefix:'group-'}})`)));
   console.log('4 prefs.set collapsed from content (allowed):', JSON.stringify(await evalIn(`chrome.runtime.sendMessage({type:'prefs.set', patch:{collapsed:{}}}).then(r => ({ok: r.ok, prefix: r.data && r.data.prefix}))`)));
-  console.log('5 write for another owner:', JSON.stringify(await evalIn(`chrome.runtime.sendMessage({type:'repos.setProject', owner:'someone-else', repo:'x', project:null, expect:null})`)));
+  console.log('5 write for another owner:', JSON.stringify(await evalIn(`chrome.runtime.sendMessage({type:'repos.setProject', owner:'someone-else', repo:'x', group:null, expect:null})`)));
   const before = (await gh('/repos/mutsuyuki/gtf-test-firmware/topics')).names;
-  console.log('6 stale expectation (firmware, expect a folder it does not have):', JSON.stringify(await evalIn(`chrome.runtime.sendMessage({type:'repos.setProject', owner:'mutsuyuki', repo:'gtf-test-firmware', project:'topic-folders-client-a', expect:['topic-folders-zzz']})`)), '| github unchanged:', JSON.stringify((await gh('/repos/mutsuyuki/gtf-test-firmware/topics')).names) === JSON.stringify(before));
-  console.log('7 malformed message:', JSON.stringify(await evalIn(`chrome.runtime.sendMessage({type:'repos.setProject', owner:'mutsuyuki', repo:'../evil', project:null})`)));
+  console.log('6 stale expectation (firmware, expect a group it does not have):', JSON.stringify(await evalIn(`chrome.runtime.sendMessage({type:'repos.setProject', owner:'mutsuyuki', repo:'gtf-test-firmware', group:'topic-groups-client-a', expect:['topic-groups-zzz']})`)), '| github unchanged:', JSON.stringify((await gh('/repos/mutsuyuki/gtf-test-firmware/topics')).names) === JSON.stringify(before));
+  console.log('7 malformed message:', JSON.stringify(await evalIn(`chrome.runtime.sendMessage({type:'repos.setProject', owner:'mutsuyuki', repo:'../evil', group:null})`)));
   await cdp.detach();
   await browser.close();
 })().catch(e => { console.error('ERR', e.message); process.exit(1); });

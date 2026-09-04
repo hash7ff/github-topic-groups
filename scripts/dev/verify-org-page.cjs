@@ -1,6 +1,6 @@
 // Organization page: does the grouped view mount, survive React re-renders/soft navigation, and write topics?
 const { chromium } = require('playwright-core');
-const EXT_ID = process.argv[2]; const P = 'topic-folders-';
+const EXT_ID = process.argv[2]; const P = 'topic-groups-';
 (async () => {
   const browser = await chromium.connectOverCDP('http://localhost:9224');
   const ctx = browser.contexts()[0];
@@ -37,8 +37,8 @@ const EXT_ID = process.argv[2]; const P = 'topic-folders-';
   console.log('1 MOUNT ON ORG PAGE ', JSON.stringify(await snap()));
   console.log('  github topics     ', JSON.stringify(await orgTopics()));
 
-  // create a folder from the org page
-  await page.click('#gtf-root .gtf-toolbar button:has-text("New project")');
+  // create a group from the org page
+  await page.click('#gtf-root .gtf-toolbar button:has-text("New group")');
   const dlg = page.locator('dialog.gtf-dialog[open]'); await dlg.waitFor();
   await dlg.locator('input[type=text].gtf-input').fill('Infra');
   for (const n of ['gtf-org-test-a', 'gtf-org-test-b']) await dlg.locator('.gtf-picker-item').filter({ hasText: n }).locator('input').check();
@@ -55,7 +55,7 @@ const EXT_ID = process.argv[2]; const P = 'topic-folders-';
   await page.goBack(); await page.waitForTimeout(3000);
   console.log('4 AFTER BACK        ', JSON.stringify(await snap()));
 
-  // move one repo, then clean up: delete the folder
+  // move one repo, then clean up: delete the group
   await page.click(`#gtf-root li.gtf-repo[data-repo="gtf-org-test-c"] .gtf-repo-actions button`);
   await dlg.waitFor(); await dlg.locator('.gtf-menu-item').filter({ hasText: /^Infra/ }).click();
   await page.waitForSelector('#gtf-root .gtf-flash:not([hidden])', { timeout: 60000 }); await page.waitForTimeout(500);

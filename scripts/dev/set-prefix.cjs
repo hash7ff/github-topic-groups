@@ -1,4 +1,4 @@
-// Set the folder-topic prefix via the options page; then report the groups shown on the repositories page.
+// Set the group-topic prefix via the options page; then report the groups shown on the repositories page.
 const { chromium } = require('playwright-core');
 const EXT_ID = process.argv[2]; const PREFIX = process.argv[3];
 (async () => {

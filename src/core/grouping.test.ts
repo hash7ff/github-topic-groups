@@ -6,34 +6,34 @@ import { repo } from "./fixtures.ts";
 test("Plan.md §33 Case 1: api+frontend under Client A, firmware Ungrouped", () => {
   const g = groupRepos([repo("frontend", ["project-client-a"]), repo("firmware", []), repo("api", ["project-client-a"])], "project-");
   assert.deepEqual(
-    g.projects.map((p) => ({ name: p.name, topic: p.topic, repos: p.repos.map((r) => r.name) })),
+    g.groups.map((p) => ({ name: p.name, topic: p.topic, repos: p.repos.map((r) => r.name) })),
     [{ name: "Client A", topic: "project-client-a", repos: ["api", "frontend"] }],
   );
   assert.deepEqual(g.ungrouped.map((r) => r.name), ["firmware"]);
   assert.deepEqual(g.conflicts, []);
 });
 
-test("projects sort alphabetically by display name; repos by name (numeric aware)", () => {
+test("groups sort alphabetically by display name; repos by name (numeric aware)", () => {
   const g = groupRepos([repo("z", ["project-oss"]), repo("repo10", ["project-client-b"]), repo("repo2", ["project-client-b"]), repo("a", ["project-client-a"])], "project-");
-  assert.deepEqual(g.projects.map((p) => p.name), ["Client A", "Client B", "Oss"]);
-  assert.deepEqual(g.projects[1]?.repos.map((r) => r.name), ["repo2", "repo10"]);
+  assert.deepEqual(g.groups.map((p) => p.name), ["Client A", "Client B", "Oss"]);
+  assert.deepEqual(g.groups[1]?.repos.map((r) => r.name), ["repo2", "repo10"]);
 });
 
-test("Plan.md §25: several project topics -> conflict, never auto-resolved, not shown in any group", () => {
+test("Plan.md §25: several group topics -> conflict, never auto-resolved, not shown in any group", () => {
   const g = groupRepos([repo("api", ["project-client-a", "project-client-b", "python"])], "project-");
-  assert.deepEqual(g.projects, []);
+  assert.deepEqual(g.groups, []);
   assert.deepEqual(g.ungrouped, []);
   assert.equal(g.conflicts.length, 1);
   assert.deepEqual(g.conflicts[0]?.topics, ["project-client-a", "project-client-b"]);
 });
 
-test("non-project topics never influence grouping", () => {
+test("non-group topics never influence grouping", () => {
   const g = groupRepos([repo("cli", ["python", "cli"])], "project-");
   assert.deepEqual(g.ungrouped.map((r) => r.name), ["cli"]);
 });
 
-test("default prefix: project-* topics are plain topics, topic-folders-* are folders", () => {
-  const g = groupRepos([repo("euler", ["project-euler"]), repo("api", ["topic-folders-client-a", "project-management"])]);
+test("default prefix: project-* topics are plain topics, topic-groups-* are groups", () => {
+  const g = groupRepos([repo("euler", ["project-euler"]), repo("api", ["topic-groups-client-a", "project-management"])]);
   assert.deepEqual(g.ungrouped.map((r) => r.name), ["euler"]);
-  assert.deepEqual(g.projects.map((p) => [p.name, p.repos.map((r) => r.name)]), [["Client A", ["api"]]]);
+  assert.deepEqual(g.groups.map((p) => [p.name, p.repos.map((r) => r.name)]), [["Client A", ["api"]]]);
 });

@@ -42,7 +42,7 @@ const id = await idPage.evaluate(
   () =>
     new Promise((resolve) => {
       chrome.developerPrivate.getExtensionsInfo({ includeDisabled: true }, (list) => {
-        const mine = list.filter((i) => i.name === "GitHub Topic Folders" && i.location === "UNPACKED");
+        const mine = list.filter((i) => i.name === "Topic Groups for GitHub" && i.location === "UNPACKED");
         resolve(mine.length === 1 ? mine[0].id : null);
       });
     }),

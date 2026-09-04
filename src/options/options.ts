@@ -55,7 +55,7 @@ function render(status: AuthStatus | null, error?: ApiErrorInfo): void {
   flowEl.hidden = !inFlow;
   if (error) statusEl.textContent = `Signed in, but GitHub rejected the credential: ${describe(error)}`;
   else if (!status || !status.configured) statusEl.textContent = "Not signed in.";
-  else statusEl.textContent = `Signed in as ${status.login ?? "?"} ${status.kind === "github-app" ? "via the Topic Folders GitHub App." : "with a personal access token."}`;
+  else statusEl.textContent = `Signed in as ${status.login ?? "?"} ${status.kind === "github-app" ? "via the Topic Groups GitHub App." : "with a personal access token."}`;
 }
 
 async function refreshInstallations(): Promise<void> {

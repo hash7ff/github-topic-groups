@@ -1,6 +1,6 @@
-// M6 acceptance via the real UI: Move to…, New project (privacy notice), bulk create, restore Case 1. Test repos only.
+// M6 acceptance via the real UI: Move to…, New group (privacy notice), bulk create, restore Case 1. Test repos only.
 const { chromium } = require('playwright-core');
-const SP = __dirname; const READ = process.env.GTF_READ_TOKEN; const P = 'topic-folders-';
+const SP = __dirname; const READ = process.env.GTF_READ_TOKEN; const P = 'topic-groups-';
 const gh = async (path) => (await fetch('https://api.github.com' + path, { headers: { Authorization: `Bearer ${READ}`, Accept: 'application/vnd.github+json' } })).json();
 const topics = async () => ({ api: (await gh('/repos/mutsuyuki/gtf-test-api/topics')).names, frontend: (await gh('/repos/mutsuyuki/gtf-test-frontend/topics')).names, firmware: (await gh('/repos/mutsuyuki/gtf-test-firmware/topics')).names });
 (async () => {
@@ -39,9 +39,9 @@ const topics = async () => ({ api: (await gh('/repos/mutsuyuki/gtf-test-api/topi
   console.log('1 MOVE firmware->Client A', JSON.stringify({ menu: items1.map(t => t.replace(/\s+/g, ' ').trim()), flash: await waitFlash(), groups: await groups(), github: (await topics()).firmware }));
   await dismissFlash();
 
-  // 2) Move api -> New project… "Client B" (privacy notice expected on first use)
+  // 2) Move api -> New group… "Client B" (privacy notice expected on first use)
   await moveBtn('gtf-test-api').click();
-  await dlg().locator('.gtf-menu-item').filter({ hasText: /New project/ }).click();
+  await dlg().locator('.gtf-menu-item').filter({ hasText: /New group/ }).click();
   await dlg().waitFor({ timeout: 5000 });
   const noticeVisible = await dlg().locator('.gtf-notice-attention').count();
   const preselected = await dlg().locator('.gtf-picker-item input:checked').count();
@@ -52,8 +52,8 @@ const topics = async () => ({ api: (await gh('/repos/mutsuyuki/gtf-test-api/topi
   console.log('2 NEW PROJECT Client B (api)', JSON.stringify({ noticeVisible: noticeVisible === 1, preselected, preview, flash: await waitFlash(), groups: await groups(), github: (await topics()).api }));
   await dismissFlash();
 
-  // 3) Toolbar New project -> OSS with frontend + firmware (bulk); notice must be gone
-  await page.locator('#gtf-root .gtf-toolbar button', { hasText: 'New project' }).click();
+  // 3) Toolbar New group -> OSS with frontend + firmware (bulk); notice must be gone
+  await page.locator('#gtf-root .gtf-toolbar button', { hasText: 'New group' }).click();
   await dlg().waitFor({ timeout: 5000 });
   const noticeAgain = await dlg().locator('.gtf-notice-attention').count();
   await dlg().locator('input[type=search].gtf-input').fill('gtf-test');
@@ -64,8 +64,8 @@ const topics = async () => ({ api: (await gh('/repos/mutsuyuki/gtf-test-api/topi
   console.log('3 BULK NEW PROJECT OSS', JSON.stringify({ noticeAgain: noticeAgain === 1, filtered: shown.map(t => t.trim().split(/\s+/)[0]), flash: await waitFlash(), groups: await groups(), github: await topics() }));
   await dismissFlash();
 
-  // 4) Restore Case 1: api -> New project "Client A"; frontend -> Client A; firmware -> Ungrouped
-  await moveBtn('gtf-test-api').click(); await dlg().locator('.gtf-menu-item').filter({ hasText: /New project/ }).click(); await dlg().waitFor();
+  // 4) Restore Case 1: api -> New group "Client A"; frontend -> Client A; firmware -> Ungrouped
+  await moveBtn('gtf-test-api').click(); await dlg().locator('.gtf-menu-item').filter({ hasText: /New group/ }).click(); await dlg().waitFor();
   await dlg().locator('input[type=text].gtf-input').fill('Client A'); await dlg().locator('.gtf-btn-primary').click(); await waitFlash(); await dismissFlash();
   await moveBtn('gtf-test-frontend').click(); await dlg().locator('.gtf-menu-item').filter({ hasText: /^Client A/ }).click(); await waitFlash(); await dismissFlash();
   await moveBtn('gtf-test-firmware').click(); await dlg().locator('.gtf-menu-item').filter({ hasText: /^Ungrouped/ }).click(); const f4 = await waitFlash(); await dismissFlash();
