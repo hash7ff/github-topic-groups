@@ -11,10 +11,33 @@
 | 開発者アカウント登録（初回 5 USD、Google アカウント） | **未** |
 | 公開者名を HASH7FF にする（要メール確認） | 未 |
 | アイコン 128×128 PNG | ✅ `icons/icon128.png`（`assets/icon.svg` から生成） |
-| スクリーンショット 1280×800（1〜5 枚） | 🔶 暫定 `assets/screenshots/`。**実リポを分類してから撮り直す**（現状はテストリポ 3 つだけで説得力が弱い） |
+| スクリーンショット 1280×800（5 枚） | ✅ `assets/screenshots/`。**デモ用データ**で撮影（下記） |
 | プライバシーポリシー URL | ✅ https://hash7ff.github.io/github-topic-groups/privacy.html |
 | ホームページ URL | ✅ https://hash7ff.github.io/github-topic-groups/ |
 | サポート連絡先 | contact@hash7ff.com |
+
+## スクリーンショットの作り方
+
+`node scripts/demo-screenshots.mjs` で 1280×800 を 5 枚生成する（`--keep` を付けるとデモ状態のまま残る）。
+
+**実在のリポジトリは 1 つも写らない。** 拡張のセッションキャッシュに架空のリポジトリ一覧を書き込んでから撮影し、
+最後にキャッシュを消すだけなので、**GitHub には一切書き込まない**（Topic も付けない、リポジトリも作らない）。
+デモの内容は `scripts/demo-screenshots.mjs` の `DEMO` 配列にあり、Client A / Mobile / Oss の 3 グループと
+未分類 2 件で構成している。
+
+| ファイル | 内容 |
+|---|---|
+| `01-grouped.png` | グループ表示の全体像 |
+| `02-move-to.png` | Move to… ダイアログ |
+| `03-new-group.png` | 新規グループ作成（Topic プレビューと公開性の警告つき） |
+| `04-original.png` | Original 表示へ戻せること |
+| `05-settings.png` | 設定画面（Sign in with GitHub） |
+
+注意点が 2 つある。
+- プロフィール左側に本人のアバターと所属 Organization が写る。いずれも公開情報だが、避けたい場合は
+  Organization のリポジトリ一覧ページで撮ると個人情報は写らない。
+- GitHub のタブに出る総数（現在 109）はデモの件数と一致しない。気になる場合は撮影時に DOM 上の数値も
+  合わせる（掲載の可否に影響する類のものではない）。
 
 ## リスティング
 
