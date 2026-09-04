@@ -6,6 +6,19 @@ const topics = async () => ({ api: (await gh('/repos/mutsuyuki/gtf-test-api/topi
 (async () => {
   const browser = await chromium.connectOverCDP('http://localhost:9224');
   const ctx = browser.contexts()[0];
+  // GitHub's repository *list* endpoint lags a few seconds behind topic writes, so a run started right after
+  // another script wrote topics can load a stale list. Drop the extension's cache and wait for the two endpoints
+  // to agree before starting.
+  const opt0 = await ctx.newPage(); await opt0.goto(`chrome-extension://${process.argv[2]}/options.html`);
+  await opt0.evaluate(() => chrome.storage.session.clear());
+  for (let i = 0; i < 30; i++) {
+    const list = await gh('/user/repos?affiliation=owner&per_page=100');
+    const byName = Object.fromEntries(list.map(r => [r.name, (r.topics || []).slice().sort().join(',')]));
+    const t = await topics();
+    if (['api', 'frontend', 'firmware'].every(k => byName['gtf-test-' + k] === t[k].slice().sort().join(','))) { console.log('list endpoint consistent after', i, 'polls'); break; }
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  await opt0.close();
   const page = ctx.pages().find(p => p.url().startsWith('https://github.com/mutsuyuki')) || await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   const snap = () => page.evaluate(() => ({

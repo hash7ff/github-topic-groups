@@ -10,7 +10,7 @@ const topics = async (repo) => (await gh(`/repos/mutsuyuki/${repo}/topics`)).nam
   const opt = await ctx.newPage(); await opt.goto(`chrome-extension://${EXT_ID}/options.html`);
   await opt.waitForFunction(() => /Signed in/.test(document.getElementById('status')?.textContent || ''), null, { timeout: 15000 });
   const send = (req) => opt.evaluate((r) => chrome.runtime.sendMessage(r), req);
-  const setP = (repo, group) => send({ type: 'repos.setProject', owner: 'mutsuyuki', repo, group });
+  const setP = (repo, group) => send({ type: 'repos.setGroup', owner: 'mutsuyuki', repo, group });
   const P = 'topic-groups-';
   console.log('0 GITHUB before', JSON.stringify({ api: await topics('gtf-test-api'), frontend: await topics('gtf-test-frontend'), firmware: await topics('gtf-test-firmware') }));
 
@@ -35,8 +35,8 @@ const topics = async (repo) => (await gh(`/repos/mutsuyuki/${repo}/topics`)).nam
   const bulk = await opt.evaluate(({ port, items }) => new Promise((resolve) => {
     const p = chrome.runtime.connect({ name: port }); const events = []; const t0 = Date.now();
     p.onMessage.addListener((e) => { events.push({ t: Date.now() - t0, ...e }); if (e.type === 'result') { p.disconnect(); resolve(events); } });
-    p.postMessage({ type: 'bulk.setProject', items });
-  }), { port: 'gtf-bulk', items: [{ owner: 'mutsuyuki', repo: 'gtf-test-api', group: P + 'client-a' }, { owner: 'mutsuyuki', repo: 'gtf-test-firmware', group: null }] });
+    p.postMessage({ type: 'bulk.setGroup', items });
+  }), { port: 'gtf-bulk', items: [{ owner: 'mutsuyuki', repo: 'gtf-test-api', group: P + 'client-a', expect: null }, { owner: 'mutsuyuki', repo: 'gtf-test-firmware', group: null, expect: null }] });
   console.log('6 BULK events', JSON.stringify(bulk.map(e => e.type === 'result' ? { t: e.t, type: e.type, ok: e.succeeded.map(s => [s.repo, s.result.after]), failed: e.failed } : e)));
 
   const journal = await send({ type: 'journal.list' });
