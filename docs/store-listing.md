@@ -22,7 +22,7 @@
 
 **実在のリポジトリは 1 つも写らない。** 拡張のセッションキャッシュに架空のリポジトリ一覧を書き込んでから撮影し、
 最後にキャッシュを消すだけなので、**GitHub には一切書き込まない**（Topic も付けない、リポジトリも作らない）。
-デモの内容は `scripts/demo-screenshots.mjs` の `DEMO` 配列にあり、Client A / Mobile / Oss の 3 グループと
+デモの内容は `scripts/demo-screenshots.mjs` の `DEMO` 配列にあり、Platform / Mobile / Open Source の 3 グループと
 未分類 2 件で構成している。
 
 | ファイル | 内容 |
@@ -52,11 +52,11 @@
 GitHub has no groups for repositories. Once you have more than a handful, the list becomes a wall of names.
 
 Topic Groups for GitHub turns your existing GitHub topics into groups. Tag a repository with a topic such as
-topic-groups-client-a and it appears under a collapsible "Client A" group on your Repositories tab.
+topic-groups-platform and it appears under a collapsible "Platform" group on your Repositories tab.
 
 - Topics are the only source of truth. Nothing is stored in a private database, so your classification stays on
   GitHub: uninstall the extension and it is still there, use another computer and it is already there.
-- Repositories keep their names. No more client-a-api prefixes leaking into clone directories.
+- Repositories keep their names. No more platform-api prefixes leaking into clone directories.
 - Your other topics are never touched. Moving a repository between groups rewrites only the group topic.
 - Always escapable. A Grouped / Original switch brings GitHub's own list back at any time, and GitHub's own
   search, type, language and sort controls keep working.

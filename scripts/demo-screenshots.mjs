@@ -34,14 +34,14 @@ const repo = (name, group, language, description, extra = {}) => ({
 });
 
 const DEMO = [
-  repo("api", "client-a", "Go", "Order and billing API for the Client A platform.", { age: 1, topics: ["backend"] }),
-  repo("web", "client-a", "TypeScript", "Customer-facing web application.", { age: 2 }),
-  repo("infra", "client-a", "HCL", "Terraform modules and environments.", { age: 6 }),
+  repo("api", "platform", "Go", "Order and billing API.", { age: 1, topics: ["backend"] }),
+  repo("web", "platform", "TypeScript", "Customer-facing web application.", { age: 2 }),
+  repo("infra", "platform", "HCL", "Terraform modules and environments.", { age: 6 }),
   repo("ios-app", "mobile", "Swift", "iOS client, shares the design system with android-app.", { age: 3 }),
   repo("android-app", "mobile", "Kotlin", "Android client.", { age: 9 }),
   repo("design-tokens", "mobile", "JSON", "Colours, spacing and type scale shared by both apps.", { age: 21 }),
-  repo("color-utils", "oss", "Rust", "Small colour-space conversion crate.", { private: false, age: 40, stars: 128 }),
-  repo("ts-config", "oss", "TypeScript", "Shared tsconfig presets.", { private: false, age: 120, stars: 31 }),
+  repo("color-utils", "open-source", "Rust", "Small colour-space conversion crate.", { private: false, age: 40, stars: 128 }),
+  repo("ts-config", "open-source", "TypeScript", "Shared tsconfig presets.", { private: false, age: 120, stars: 31 }),
   repo("spike-webgpu", null, "JavaScript", "Weekend experiment, not going anywhere yet.", { age: 14 }),
   repo("meeting-notes", null, "Markdown", null, { age: 60 }),
 ];
@@ -109,7 +109,7 @@ await page.waitForTimeout(400);
 
 await page.click('#gtf-root .gtf-toolbar button:has-text("New group")');
 await page.waitForSelector("dialog.gtf-dialog[open]", { timeout: 10000 });
-await page.fill("dialog.gtf-dialog[open] input[type=text].gtf-input", "Platform");
+await page.fill("dialog.gtf-dialog[open] input[type=text].gtf-input", "Data Pipeline");
 await page.waitForTimeout(300);
 for (const name of ["api", "infra"]) {
   await page.locator("dialog.gtf-dialog[open] .gtf-picker-item").filter({ hasText: name }).first().locator("input").check();

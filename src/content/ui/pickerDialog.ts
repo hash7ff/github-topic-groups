@@ -69,7 +69,7 @@ export function openNewGroupDialog(
   const selected = new Set(opts.preselected);
   const available = opts.repos.filter((r) => !opts.conflicted.has(r.name));
 
-  const nameInput = h("input", { className: "gtf-input", type: "text", placeholder: "e.g. Client A", ariaLabel: "Group name" });
+  const nameInput = h("input", { className: "gtf-input", type: "text", placeholder: "e.g. Platform", ariaLabel: "Group name" });
   const preview = h("p", { className: "gtf-preview" });
   const notice = opts.showPrivacyNotice
     ? h(

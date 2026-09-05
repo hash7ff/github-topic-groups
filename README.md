@@ -3,8 +3,8 @@
 A Chrome extension that shows your GitHub repositories grouped into groups, GitLab-group style,
 using **GitHub Topics** as the only source of truth.
 
-Tag a repository with a topic like `topic-groups-client-a` and the Repositories tab on your profile
-(`github.com/<you>?tab=repositories`) shows it under a collapsible **Client A** group.
+Tag a repository with a topic like `topic-groups-platform` and the Repositories tab on your profile
+(`github.com/<you>?tab=repositories`) shows it under a collapsible **Platform** group.
 Repositories without a `topic-groups-*` topic appear under **Ungrouped**. The prefix is configurable in the
 extension settings; the default was chosen because generic prefixes such as `group-` already appear on thousands of
 repositories (`group-management`, `group-euler`, …) and would be misread as groups. Nothing is stored anywhere but GitHub:
@@ -80,7 +80,7 @@ pasted instead of signing in.
 - **Group names live in GitHub's global topic namespace.** GitHub's documentation states that "topic names are
   always public, even if you create the topic from within a private repository", so follow GitHub's own advice and
   keep company, client or engagement names out of them. Use a neutral code such as `topic-groups-c01` when the name
-  itself is the secret.
+  itself is the secret. The examples throughout this project deliberately name areas of work rather than customers.
   What this does *not* mean: your private repositories are not exposed. GitHub's public topic pages list public
   repositories only, and "you will only see private repositories that you have access to in topic search results".
   Measured on 2026-09-05: a topic used solely on private repositories renders exactly the same public page as a

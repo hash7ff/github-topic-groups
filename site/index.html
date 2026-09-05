@@ -25,16 +25,16 @@
   <p>Give a repository a topic that starts with <code>topic-groups-</code>. That is the whole data model.</p>
   <div class="card"><pre class="demo">Repositories                      Repositories (grouped)
 
-api        topic-groups-client-a     ▼ Client A  (3)
-frontend   topic-groups-client-a         api
-firmware   topic-groups-client-a         frontend
-cool-lib   topic-groups-oss              firmware
+api        topic-groups-platform     ▼ Platform  (3)
+frontend   topic-groups-platform         api
+firmware   topic-groups-platform         firmware
+cool-lib   topic-groups-oss              frontend
 test-tool                             ▶ OSS  (1)
                                       ▼ Ungrouped  (1)
                                           test-tool</pre></div>
   <ul>
     <li><strong>Topics are the source of truth.</strong> There is no hidden database. Uninstall the extension and your classification is still on GitHub, as plain topics. Use another machine and it is already there.</li>
-    <li><strong>Repositories keep their names.</strong> No <code>client-a-api</code> prefixes; <code>api</code> stays <code>api</code>.</li>
+    <li><strong>Repositories keep their names.</strong> No <code>platform-api</code> prefixes; <code>api</code> stays <code>api</code>.</li>
     <li><strong>Your other topics are never touched.</strong> Moving a repository between groups rewrites only the <code>topic-groups-*</code> topic.</li>
     <li><strong>Always escapable.</strong> A <em>Grouped | Original</em> switch brings back GitHub's own list at any time.</li>
   </ul>
