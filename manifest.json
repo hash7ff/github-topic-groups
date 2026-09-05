@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Topic Groups for GitHub",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Shows your GitHub repositories grouped by topic-groups-* topics. Topics stay the only source of truth.",
   "icons": {
     "16": "icons/icon16.png",

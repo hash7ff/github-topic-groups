@@ -1,10 +1,10 @@
-// Pure helpers around the folder-topic convention (`<prefix><slug>`). No chrome.* / DOM access here.
+// Pure helpers around the group-topic convention (`<prefix><slug>`). No chrome.* / DOM access here.
 //
 // EXTENSION POINT — ordering and nesting.
 // A GitHub topic is a flat string, so anything beyond a name has to be encoded in it (for example
 // `topic-groups-10-client-a` for a sort key, or a separator for `Client A / Backend`). Every conversion between a
 // topic and what the user sees goes through exactly two functions here: `displayNameFromTopic` (topic -> label) and
-// `normalizeGroupName` (label -> topic), with `isGroupTopic` deciding what counts as a folder. Grouping, the
+// `normalizeGroupName` (label -> topic), with `isGroupTopic` deciding what counts as a group. Grouping, the
 // dialogs and the write path never parse topic strings themselves, so a future convention can be added by changing
 // these functions and returning richer values, without touching the UI or the write path.
 // Deliberately NOT done in v0.1: such a convention leaks into every topic name and cannot be undone for users who
@@ -12,7 +12,7 @@
 
 /**
  * Default prefix. `group-` was rejected because thousands of public repositories already carry topics such as
- * `group-management` / `group-euler` (counted 2026-09-03), which the extension would misread as folders and could
+ * `group-management` / `group-euler` (counted 2026-09-03), which the extension would misread as groups and could
  * even delete via "Delete group". The prefix is configurable per browser (Prefs.prefix).
  */
 export const DEFAULT_PREFIX = "topic-groups-";

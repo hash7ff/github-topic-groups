@@ -5,7 +5,7 @@ export type ViewMode = "grouped" | "original";
 /** UI preferences. Never classification data (that lives only in GitHub topics, Plan.md §3.1 / §23). */
 export type Prefs = {
   viewMode: ViewMode;
-  /** Folder-topic prefix, e.g. "topic-groups-". Per browser; the topics themselves stay on GitHub. */
+  /** Group-topic prefix, e.g. "topic-groups-". Per browser; the topics themselves stay on GitHub. */
   prefix: string;
   /** Developer safety switch: plan and journal writes but never PUT. */
   dryRun: boolean;

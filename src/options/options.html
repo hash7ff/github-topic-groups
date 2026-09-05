@@ -15,13 +15,13 @@
       <p id="status" class="status">Checking…</p>
 
       <div id="signedOut" hidden>
-        <p>Connect the <strong>Topic Folders</strong> GitHub App. You will get a short code to enter on GitHub; no token to create or paste.</p>
+        <p>Connect the <strong>Topic Groups</strong> GitHub App. You will get a short code to enter on GitHub; no token to create or paste.</p>
         <button id="signIn" type="button">Sign in with GitHub</button>
       </div>
 
       <div id="flow" class="card" hidden>
         <p><strong>1.</strong> Your code: <code id="userCode" class="user-code"></code> <button id="copyCode" type="button" class="secondary small">Copy</button></p>
-        <p><strong>2.</strong> <a id="openGitHub" href="https://github.com/login/device" target="_blank" rel="noreferrer">Open github.com/login/device</a> and enter the code, then approve <em>Topic Folders</em>.</p>
+        <p><strong>2.</strong> <a id="openGitHub" href="https://github.com/login/device" target="_blank" rel="noreferrer">Open github.com/login/device</a> and enter the code, then approve <em>Topic Groups</em>.</p>
         <p id="flowStatus" class="muted">Waiting for you to approve on GitHub…</p>
         <button id="cancelFlow" type="button" class="secondary small">Cancel</button>
       </div>
@@ -47,7 +47,7 @@
         <button id="savePrefix" type="button" class="secondary">Save prefix</button>
       </div>
       <p class="muted">Topics starting with this prefix are shown as groups; e.g. <code>topic-groups-platform</code> becomes the group <em>Platform</em>.
-        Lowercase letters, numbers and hyphens, ending with a hyphen. This setting lives in this browser only: repositories tagged with a different prefix are not recognised as folders until re-tagged.
+        Lowercase letters, numbers and hyphens, ending with a hyphen. This setting lives in this browser only: repositories tagged with a different prefix are not recognised as groups until re-tagged.
         Choose a prefix nobody uses for anything else, because "Delete group" removes topics with this prefix.</p>
       <p id="prefixResult" class="result" hidden></p>
 
