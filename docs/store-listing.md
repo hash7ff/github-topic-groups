@@ -14,7 +14,7 @@
 | スクリーンショット 1280×800（5 枚） | ✅ `assets/screenshots/`。**デモ用データ**で撮影（下記） |
 | プライバシーポリシー URL | ✅ https://hash7ff.github.io/github-topic-groups/privacy.html |
 | ホームページ URL | ✅ https://hash7ff.github.io/github-topic-groups/ |
-| サポート連絡先 | contact@hash7ff.com |
+| サポート連絡先 | support@hash7ff.com |
 
 ## スクリーンショットの作り方
 
