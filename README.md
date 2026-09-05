@@ -77,6 +77,17 @@ pasted instead of signing in.
 - With a GitHub App installation limited to selected repositories, GitHub still lists all your public repositories
   (read-only); moving one of them fails until the app is installed on it. Installing on *All repositories* avoids this.
 - Group names are derived from the topic (`topic-groups-my-oss` → "My Oss"); casing is not preserved.
+- **Group names live in GitHub's global topic namespace.** GitHub's documentation states that "topic names are
+  always public, even if you create the topic from within a private repository", so follow GitHub's own advice and
+  keep company, client or engagement names out of them. Use a neutral code such as `topic-groups-c01` when the name
+  itself is the secret.
+  What this does *not* mean: your private repositories are not exposed. GitHub's public topic pages list public
+  repositories only, and "you will only see private repositories that you have access to in topic search results".
+  Measured on 2026-09-05: a topic used solely on private repositories renders exactly the same public page as a
+  topic nobody has ever used, so an outsider cannot even tell that the name is in use.
+- Coming from GitLab: a GitLab group is a container with its own visibility, so a private group hides its own name.
+  Topics cannot do that — they are labels in a public namespace. In exchange, repository names and clone paths never
+  change when you regroup.
 - For an organization, the app must be installed on that organization. If you are not an owner, GitHub turns the
   install button into a request that an owner has to approve. Changing topics additionally requires admin
   permission on the repository, because a user access token grants only what both the app and you may do.

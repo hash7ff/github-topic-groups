@@ -299,6 +299,29 @@ src/content/pages/
 
 **改名で壊れないようにした点**: インストール判定に App の slug を使っていたため改名で組織判定が壊れる作りだった。**数値の App ID（4816822、改名で不変）で照合**するよう変更し、slug はインストール URL の組み立てにのみ使う。これで GitHub 側の改名を先にしても後にしても壊れない。
 
+## 5.9 Topic の公開範囲（2026-09-05、公式ドキュメント＋実測で確認）
+
+Plan.md §16 の「Topic 名は Private Repository でも公開情報」という前提を、初めて裏取りした。
+
+**公式ドキュメントの原文**（Classifying your repository with topics）:
+- 「Topic names are always public, even if you create the topic from within a private repository.」
+- 「Public and private repositories can have topics, although you will only see private repositories that you have access to in topic search results.」
+
+**実測**（非公開リポにのみ付けた `topic-groups-skh` / `topic-groups-client-a`、未認証アクセス）:
+
+| 経路 | 結果 |
+|---|---|
+| `github.com/topics/<name>` | HTTP 200 だが該当リポの記載ゼロ。**誰も使っていない Topic と表示が完全に同一**（"hasn't been used on any public repositories, yet."） |
+| 検索 API（未認証） | 0 件 |
+| 検索 API（本人） | 4 件、リポジトリ名まで見える |
+| 非公開リポのページ（未認証） | 404 |
+
+**結論**: リポジトリ名・存在・所属は漏れない。漏れうるのは Topic の**名前という文字列そのもの**だけで、経路は Topic 入力時の補完候補にあるグローバル索引と考えられる（他アカウントからの検証手段が無く**未検証**）。危険なのは「グループ名それ自体が機密」の場合に限られる。
+
+**GitLab との構造差**: GitLab の Group は可視性設定を持つコンテナで、非公開にすれば名前ごと隠れる（非公開 Group は非公開のサブグループ/プロジェクトしか持てない）。Topic にはラベル自体を隠す仕組みが無い。代わりに Topic 方式はリポジトリ名とクローン先パスを変えない（Plan.md §3.2）。
+
+README・サイト・プライバシーポリシー・設定画面・新規グループ作成時の警告に反映した。「常に公開」とだけ書くとリポジトリ名まで漏れると誤読されるため、**漏れないものも明記**する方針にした。
+
 ## 6. リスクと対策
 
 - **GitHub 側 DOM 変更**（最大の保守リスク）: 依存を `#user-repositories-list` の位置と URL だけに絞る。アンカーが無ければ何もしない。ログイン時 DOM は M1 で最初に確認する（今回の確認はログアウト時のみ）。

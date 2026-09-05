@@ -42,7 +42,7 @@
     Writes happen only in response to an action you take (creating, moving, renaming or deleting a group, or fixing a conflict) and replace the repository's topic list while preserving every topic that does not start with the group prefix you configured (default <code>topic-groups-</code>).
     Because GitHub's topics API replaces the whole list, a topic added by someone else in the fraction of a second between the extension reading and writing the list could be lost; the extension re-reads the list immediately before each write to keep that window as small as possible.
     The extension cannot create, delete, or otherwise modify repositories.</p>
-  <p>Please note that <strong>GitHub topic names are public</strong>, even on private repositories. The extension warns about this; avoid confidential names.</p>
+  <p>Please note that <strong>GitHub registers topic names globally</strong>, even when a topic is used only on private repositories, so avoid company, client or engagement names; the extension warns about this. Your repositories themselves are not exposed by this: GitHub's public topic pages list public repositories only.</p>
 
   <h2>Permissions</h2>
   <ul>
