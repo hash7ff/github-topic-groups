@@ -9,7 +9,8 @@
     "watch": "node build.mjs --watch",
     "test": "node --test \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm test && npm run build && bash scripts/check-token-isolation.sh"
+    "check": "npm run typecheck && npm test && npm run build && bash scripts/check-token-isolation.sh",
+    "package": "npm run check && node scripts/package.mjs"
   },
   "license": "MIT",
   "devDependencies": {

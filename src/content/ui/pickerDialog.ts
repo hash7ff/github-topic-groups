@@ -76,7 +76,7 @@ export function openNewGroupDialog(
         "div",
         { className: "gtf-notice gtf-notice-attention" },
         h("strong", {}, "Important: "),
-        "GitHub topic names are public even when used with private repositories. Do not use confidential client or group names as group topics. ",
+        "GitHub registers topic names globally, even when you only use them on private repositories, so avoid company, client or engagement names. Your private repositories stay private: their names never appear on GitHub's public topic pages. ",
         h("label", { className: "gtf-check" }, h("input", { type: "checkbox", id: "gtf-dismiss-notice" }), " Don't show this again"),
       )
     : null;
