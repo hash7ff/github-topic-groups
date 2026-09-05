@@ -217,9 +217,9 @@ async function setGroup(owner: string, repo: string, group: string | null, expec
   return serializedWrite(async () => {
     const current = await api.getTopics(owner, repo);
     await storage.patchCachedTopics(owner, repo, current); // the list now reflects GitHub even if we stop here
-    const currentFolder = groupTopics(current, prefs.prefix);
-    if (!expectationMatches(currentFolder, expect)) {
-      const now = currentFolder.length === 0 ? "Ungrouped" : currentFolder.join(", ");
+    const currentGroup = groupTopics(current, prefs.prefix);
+    if (!expectationMatches(currentGroup, expect)) {
+      const now = currentGroup.length === 0 ? "Ungrouped" : currentGroup.join(", ");
       return fail({ kind: "stale", status: 0, message: `${repo} changed on GitHub since the list was loaded (now: ${now}). Nothing was written; refresh and try again.` });
     }
     const plan = planTopicWrite(current, group, prefs.prefix);

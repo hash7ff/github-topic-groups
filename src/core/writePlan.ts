@@ -3,9 +3,9 @@ import { isGroupTopic, isValidTopic, TOPICS_PER_REPO_MAX } from "./topic.ts";
 import { sameTopicSet, withGroupTopic } from "./topicsMerge.ts";
 
 /** True when the group topics currently on GitHub are exactly what the user saw when confirming the action. */
-export function expectationMatches(currentFolderTopics: readonly string[], expect: readonly string[] | null): boolean {
+export function expectationMatches(currentGroupTopics: readonly string[], expect: readonly string[] | null): boolean {
   if (expect === null) return true;
-  return sameTopicSet(currentFolderTopics, expect);
+  return sameTopicSet(currentGroupTopics, expect);
 }
 
 export type WritePlan =
